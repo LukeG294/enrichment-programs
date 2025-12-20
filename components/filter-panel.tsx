@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
-import type { CounselingProgram } from "@/lib/counseling-programs"
 
 interface FilterPanelProps {
   selectedFilters: {
@@ -12,10 +11,15 @@ interface FilterPanelProps {
     tags: string[]
   }
   setSelectedFilters: (filters: any) => void
-  programs: CounselingProgram[]
+  filters: {
+    locations: string[]
+    programTypes: string[]
+    organizations: string[]
+    tags: string[]
+  }
 }
 
-export default function FilterPanel({ selectedFilters, setSelectedFilters, programs }: FilterPanelProps) {
+export default function FilterPanel({ selectedFilters, setSelectedFilters, filters }: FilterPanelProps) {
   const [expandedSections, setExpandedSections] = useState({
     location: true,
     type: true,
@@ -30,10 +34,10 @@ export default function FilterPanel({ selectedFilters, setSelectedFilters, progr
     }))
   }
 
-  const uniqueLocations = Array.from(new Set(programs.map((p) => p.location).filter(Boolean))).sort() as string[]
-  const uniqueTypes = Array.from(new Set(programs.map((p) => p.type).filter(Boolean))).sort() as string[]
-  const uniqueOrganizations = Array.from(new Set(programs.map((p) => p.organization).filter(Boolean))).sort()
-  const uniqueTags = Array.from(new Set(programs.flatMap((p) => p.tags))).sort()
+  const uniqueLocations = Array.from(new Set(filters.locations.filter(Boolean))).sort()
+  const uniqueTypes = Array.from(new Set(filters.programTypes.filter(Boolean))).sort()
+  const uniqueOrganizations = Array.from(new Set(filters.organizations.filter(Boolean))).sort()
+  const uniqueTags = Array.from(new Set(filters.tags.filter(Boolean))).sort()
 
   return (
     <div className="space-y-4 rounded-lg border border-border bg-card p-6">
