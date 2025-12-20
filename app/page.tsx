@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Search, X } from "lucide-react"
 import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
@@ -8,6 +8,7 @@ import type { CounselingProgram } from "@/lib/counseling-programs"
 import Image from "next/image"
 
 const PROGRAMS_ENDPOINT = "https://api.ckpnt.com/counseling/programs"
+const PAGE_SIZE = 6
 
 const normalizeTags = (tags: unknown): string[] => {
   if (Array.isArray(tags)) {
@@ -32,55 +33,94 @@ export default function Home() {
   })
   const [programs, setPrograms] = useState<CounselingProgram[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+  const fetchPrograms = useCallback(async ({
+    pageToLoad,
+    append,
+    signal,
+  }: {
+    pageToLoad: number
+    append: boolean
+    signal?: AbortSignal
+  }) => {
+    if (pageToLoad === 1) {
+      setIsLoading(true)
+    } else {
+      setIsLoadingMore(true)
+    }
+    setErrorMessage(null)
+
+    try {
+      const response = await fetch(`${PROGRAMS_ENDPOINT}?page=${pageToLoad}&limit=${PAGE_SIZE}`, {
+        signal,
+      })
+
+      if (!response.ok) {
+        throw new Error("Request failed")
+      }
+
+      const data = await response.json()
+
+      if (!data?.success || !Array.isArray(data.programs)) {
+        throw new Error("Unexpected response")
+      }
+
+      const mappedPrograms: CounselingProgram[] = data.programs.map((program: any) => ({
+        id: Number(program.id),
+        program: String(program.program ?? "").trim(),
+        organization: String(program.organization ?? "").trim(),
+        location: program.location ? String(program.location).trim() : null,
+        description: program.description ? String(program.description).trim() : null,
+        link: program.link ? String(program.link).trim() : null,
+        type: program.type ? String(program.type).trim() : null,
+        tags: normalizeTags(program.tags),
+      }))
+
+      setPrograms((prevPrograms) => (append ? [...prevPrograms, ...mappedPrograms] : mappedPrograms))
+      setPage(pageToLoad)
+      setHasMore(mappedPrograms.length === PAGE_SIZE)
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        setErrorMessage("We couldn’t load programs right now. Please try again later.")
+      }
+    } finally {
+      setIsLoading(false)
+      setIsLoadingMore(false)
+    }
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
 
-    const fetchPrograms = async () => {
-      setIsLoading(true)
-      setErrorMessage(null)
-
-      try {
-        const response = await fetch(`${PROGRAMS_ENDPOINT}?page=1&limit=500`, {
-          signal: controller.signal,
-        })
-
-        if (!response.ok) {
-          throw new Error("Request failed")
-        }
-
-        const data = await response.json()
-
-        if (!data?.success || !Array.isArray(data.programs)) {
-          throw new Error("Unexpected response")
-        }
-
-        const mappedPrograms: CounselingProgram[] = data.programs.map((program: any) => ({
-          id: Number(program.id),
-          program: String(program.program ?? "").trim(),
-          organization: String(program.organization ?? "").trim(),
-          location: program.location ? String(program.location).trim() : null,
-          description: program.description ? String(program.description).trim() : null,
-          link: program.link ? String(program.link).trim() : null,
-          type: program.type ? String(program.type).trim() : null,
-          tags: normalizeTags(program.tags),
-        }))
-
-        setPrograms(mappedPrograms)
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          setErrorMessage("We couldn’t load programs right now. Please try again later.")
-        }
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchPrograms()
+    fetchPrograms({ pageToLoad: 1, append: false, signal: controller.signal })
 
     return () => controller.abort()
-  }, [])
+  }, [fetchPrograms])
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasMore) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0]
+        if (firstEntry?.isIntersecting && !isLoadingMore && !isLoading && hasMore) {
+          void fetchPrograms({ pageToLoad: page + 1, append: true })
+        }
+      },
+      { rootMargin: "120px" }
+    )
+
+    observer.observe(loadMoreRef.current)
+
+    return () => observer.disconnect()
+  }, [fetchPrograms, hasMore, isLoading, isLoadingMore, page])
 
   const filteredPrograms = useMemo(() => {
     return programs.filter((program) => {
@@ -272,11 +312,20 @@ export default function Home() {
                 Fetching the latest opportunities...
               </div>
             ) : filteredPrograms.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                {filteredPrograms.map((program) => (
-                  <ProgramCard key={program.id} program={program} />
-                ))}
-              </div>
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {filteredPrograms.map((program) => (
+                    <ProgramCard key={program.id} program={program} />
+                  ))}
+                </div>
+                <div ref={loadMoreRef} className="mt-6 flex justify-center text-sm text-muted-foreground">
+                  {isLoadingMore
+                    ? "Loading more programs..."
+                    : hasMore
+                    ? "Scroll to load more programs."
+                    : "You’ve reached the end of the list."}
+                </div>
+              </>
             ) : (
               <div className="rounded-lg border border-border bg-card p-12 text-center">
                 <p className="text-muted-foreground">No programs match your search criteria. Try adjusting your filters.</p>

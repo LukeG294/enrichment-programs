@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Building2, ExternalLink, MapPin, Tag } from "lucide-react"
 import type { CounselingProgram } from "@/lib/counseling-programs"
 
@@ -6,6 +7,7 @@ interface ProgramCardProps {
 }
 
 export default function ProgramCard({ program }: ProgramCardProps) {
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const typeColors: Record<string, string> = {
     arts: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
     business: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -15,6 +17,13 @@ export default function ProgramCard({ program }: ProgramCardProps) {
   }
 
   const typeLabel = program.type?.trim() || "program"
+  const description = program.description?.trim() ?? ""
+  const maxDescriptionLength = 160
+  const hasLongDescription = description.length > maxDescriptionLength
+  const visibleDescription =
+    hasLongDescription && !isDescriptionExpanded
+      ? `${description.slice(0, maxDescriptionLength).trimEnd()}`
+      : description
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card transition-all hover:shadow-md">
@@ -46,7 +55,21 @@ export default function ProgramCard({ program }: ProgramCardProps) {
         )}
 
         {/* Description */}
-        {program.description && <p className="mb-4 text-sm text-foreground/80">{program.description}</p>}
+        {description && (
+          <p className="mb-4 text-sm text-foreground/80">
+            {visibleDescription}
+            {hasLongDescription && !isDescriptionExpanded && "… "}
+            {hasLongDescription && (
+              <button
+                type="button"
+                onClick={() => setIsDescriptionExpanded((prev) => !prev)}
+                className="ml-1 inline-flex items-center text-primary hover:underline"
+              >
+                {isDescriptionExpanded ? "Show less" : "Show all"}
+              </button>
+            )}
+          </p>
+        )}
 
         {/* Tags */}
         {program.tags.length > 0 && (
