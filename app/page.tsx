@@ -5,7 +5,8 @@ import { Search, X } from "lucide-react"
 import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
 import { PROGRAMS } from "@/lib/programs-data"
-
+import Image
+ from "next/image"
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilters, setSelectedFilters] = useState({
@@ -73,11 +74,23 @@ export default function Home() {
     <main className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-border bg-card">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground">College Program Explorer</h1>
-            <p className="mt-2 text-muted-foreground">Discover the perfect college program for your future</p>
-          </div>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6 flex items-center gap-3">
+          <Image
+            src="/ljcds.png"
+            alt="La Jolla Country Day School logo"
+            width={48}
+            height={48}
+            priority
+          />
+          <h1 className="text-3xl font-bold text-foreground">
+            Summer Enrichment Opportunities
+          </h1>
+        </div>
+
+
+
+
 
           {/* Search Bar */}
           <div className="relative">
