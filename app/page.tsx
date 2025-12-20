@@ -8,6 +8,7 @@ import type { CounselingProgram } from "@/lib/counseling-programs"
 import Image from "next/image"
 
 const PROGRAMS_ENDPOINT = "https://api.ckpnt.com/counseling/programs"
+const FILTERS_ENDPOINT = "https://api.ckpnt.com/counseling/programs/filters"
 const PAGE_SIZE = 6
 
 const normalizeTags = (tags: unknown): string[] => {
@@ -32,6 +33,12 @@ export default function Home() {
     tags: [] as string[],
   })
   const [programs, setPrograms] = useState<CounselingProgram[]>([])
+  const [availableFilters, setAvailableFilters] = useState({
+    locations: [] as string[],
+    programTypes: [] as string[],
+    organizations: [] as string[],
+    tags: [] as string[],
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -101,6 +108,46 @@ export default function Home() {
 
     return () => controller.abort()
   }, [fetchPrograms])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const fetchFilters = async () => {
+      try {
+        const response = await fetch(FILTERS_ENDPOINT, { signal: controller.signal })
+
+        if (!response.ok) {
+          throw new Error("Request failed")
+        }
+
+        const data = await response.json()
+
+        if (!data?.success || !data.filters) {
+          throw new Error("Unexpected response")
+        }
+
+        setAvailableFilters({
+          locations: Array.isArray(data.filters.locations) ? data.filters.locations : [],
+          programTypes: Array.isArray(data.filters.programTypes) ? data.filters.programTypes : [],
+          organizations: Array.isArray(data.filters.organizations) ? data.filters.organizations : [],
+          tags: Array.isArray(data.filters.tags) ? data.filters.tags : [],
+        })
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setAvailableFilters({
+            locations: [],
+            programTypes: [],
+            organizations: [],
+            tags: [],
+          })
+        }
+      }
+    }
+
+    void fetchFilters()
+
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     if (!loadMoreRef.current || !hasMore) {
@@ -208,7 +255,7 @@ export default function Home() {
             <FilterPanel
               selectedFilters={selectedFilters}
               setSelectedFilters={setSelectedFilters}
-              programs={programs}
+              filters={availableFilters}
             />
           </aside>
 
