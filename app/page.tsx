@@ -1,103 +1,158 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Search, X } from "lucide-react"
 import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
-import { PROGRAMS } from "@/lib/programs-data"
-import Image
- from "next/image"
+import type { CounselingProgram } from "@/lib/counseling-programs"
+import Image from "next/image"
+
+const PROGRAMS_ENDPOINT = "https://api.ckpnt.com/counseling/programs"
+
+const normalizeTags = (tags: unknown): string[] => {
+  if (Array.isArray(tags)) {
+    return tags.map((tag) => String(tag).trim()).filter(Boolean)
+  }
+  if (typeof tags === "string") {
+    return tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilters, setSelectedFilters] = useState({
-    distance: null as number | null,
-    city: [] as string[],
+    location: [] as string[],
     type: [] as string[],
-    college: [] as string[],
+    organization: [] as string[],
+    tags: [] as string[],
   })
+  const [programs, setPrograms] = useState<CounselingProgram[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const fetchPrograms = async () => {
+      setIsLoading(true)
+      setErrorMessage(null)
+
+      try {
+        const response = await fetch(`${PROGRAMS_ENDPOINT}?page=1&limit=500`, {
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error("Request failed")
+        }
+
+        const data = await response.json()
+
+        if (!data?.success || !Array.isArray(data.programs)) {
+          throw new Error("Unexpected response")
+        }
+
+        const mappedPrograms: CounselingProgram[] = data.programs.map((program: any) => ({
+          id: Number(program.id),
+          program: String(program.program ?? "").trim(),
+          organization: String(program.organization ?? "").trim(),
+          location: program.location ? String(program.location).trim() : null,
+          description: program.description ? String(program.description).trim() : null,
+          link: program.link ? String(program.link).trim() : null,
+          type: program.type ? String(program.type).trim() : null,
+          tags: normalizeTags(program.tags),
+        }))
+
+        setPrograms(mappedPrograms)
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setErrorMessage("We couldn’t load programs right now. Please try again later.")
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchPrograms()
+
+    return () => controller.abort()
+  }, [])
 
   const filteredPrograms = useMemo(() => {
-    return PROGRAMS.filter((program) => {
-      // Search query filter
+    return programs.filter((program) => {
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase()
         const matchesSearch =
-          program.name.toLowerCase().includes(query) ||
-          program.college.toLowerCase().includes(query) ||
-          program.description.toLowerCase().includes(query) ||
-          program.keywords.some((k) => k.toLowerCase().includes(query))
+          program.program.toLowerCase().includes(query) ||
+          program.organization.toLowerCase().includes(query) ||
+          (program.location?.toLowerCase().includes(query) ?? false) ||
+          (program.description?.toLowerCase().includes(query) ?? false) ||
+          (program.type?.toLowerCase().includes(query) ?? false) ||
+          program.tags.some((tag) => tag.toLowerCase().includes(query))
         if (!matchesSearch) return false
       }
 
-      // Distance filter
-      if (selectedFilters.distance !== null && program.distance > selectedFilters.distance) {
+      if (selectedFilters.location.length > 0 && !selectedFilters.location.includes(program.location ?? "")) {
         return false
       }
 
-      // City filter
-      if (selectedFilters.city.length > 0 && !selectedFilters.city.includes(program.city)) {
+      if (selectedFilters.type.length > 0 && !selectedFilters.type.includes(program.type ?? "")) {
         return false
       }
 
-      // Type filter
-      if (selectedFilters.type.length > 0 && !selectedFilters.type.includes(program.type)) {
+      if (
+        selectedFilters.organization.length > 0 &&
+        !selectedFilters.organization.includes(program.organization ?? "")
+      ) {
         return false
       }
 
-      // College filter
-      if (selectedFilters.college.length > 0 && !selectedFilters.college.includes(program.college)) {
-        return false
+      if (selectedFilters.tags.length > 0) {
+        const hasMatchingTag = selectedFilters.tags.some((tag) => program.tags.includes(tag))
+        if (!hasMatchingTag) return false
       }
 
       return true
     })
-  }, [searchQuery, selectedFilters])
+  }, [programs, searchQuery, selectedFilters])
 
   const clearFilters = () => {
     setSearchQuery("")
     setSelectedFilters({
-      distance: null,
-      city: [],
+      location: [],
       type: [],
-      college: [],
+      organization: [],
+      tags: [],
     })
   }
 
   const hasActiveFilters =
     searchQuery ||
-    selectedFilters.distance ||
-    selectedFilters.city.length > 0 ||
+    selectedFilters.location.length > 0 ||
     selectedFilters.type.length > 0 ||
-    selectedFilters.college.length > 0
+    selectedFilters.organization.length > 0 ||
+    selectedFilters.tags.length > 0
 
   return (
     <main className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-border bg-card">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-center gap-3">
-          <Image
-            src="/ljcds.png"
-            alt="La Jolla Country Day School logo"
-            width={48}
-            height={48}
-            priority
-          />
-          <h1 className="text-3xl font-bold text-foreground">
-            Summer Enrichment Opportunities
-          </h1>
-        </div>
-
-
-
-
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mb-6 flex items-center gap-3">
+            <Image src="/ljcds.png" alt="La Jolla Country Day School logo" width={48} height={48} priority />
+            <h1 className="text-3xl font-bold text-foreground">Summer Enrichment Opportunities</h1>
+          </div>
 
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by program name, keywords, or college..."
+              placeholder="Search by program name, organization, or tag..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-border bg-background py-3 pl-12 pr-4 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -113,7 +168,7 @@ export default function Home() {
             <FilterPanel
               selectedFilters={selectedFilters}
               setSelectedFilters={setSelectedFilters}
-              programs={PROGRAMS}
+              programs={programs}
             />
           </aside>
 
@@ -132,64 +187,67 @@ export default function Home() {
                     <X className="h-3 w-3" />
                   </button>
                 )}
-                {selectedFilters.distance && (
+                {selectedFilters.location.map((location) => (
                   <button
-                    onClick={() => setSelectedFilters({ ...selectedFilters, distance: null })}
-                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary hover:bg-primary/20"
-                  >
-                    Within {selectedFilters.distance} mi
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-                {selectedFilters.city.map((c) => (
-                  <button
-                    key={c}
+                    key={location}
                     onClick={() =>
                       setSelectedFilters({
                         ...selectedFilters,
-                        city: selectedFilters.city.filter((x) => x !== c),
+                        location: selectedFilters.location.filter((value) => value !== location),
                       })
                     }
                     className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary hover:bg-primary/20"
                   >
-                    {c}
+                    {location}
                     <X className="h-3 w-3" />
                   </button>
                 ))}
-                {selectedFilters.type.map((t) => (
+                {selectedFilters.type.map((type) => (
                   <button
-                    key={t}
+                    key={type}
                     onClick={() =>
                       setSelectedFilters({
                         ...selectedFilters,
-                        type: selectedFilters.type.filter((x) => x !== t),
+                        type: selectedFilters.type.filter((value) => value !== type),
                       })
                     }
                     className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary hover:bg-primary/20"
                   >
-                    {t}
+                    {type}
                     <X className="h-3 w-3" />
                   </button>
                 ))}
-                {selectedFilters.college.map((c) => (
+                {selectedFilters.organization.map((organization) => (
                   <button
-                    key={c}
+                    key={organization}
                     onClick={() =>
                       setSelectedFilters({
                         ...selectedFilters,
-                        college: selectedFilters.college.filter((x) => x !== c),
+                        organization: selectedFilters.organization.filter((value) => value !== organization),
                       })
                     }
                     className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary hover:bg-primary/20"
                   >
-                    {c}
+                    {organization}
                     <X className="h-3 w-3" />
                   </button>
                 ))}
-                <button
-                  onClick={clearFilters}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                >
+                {selectedFilters.tags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() =>
+                      setSelectedFilters({
+                        ...selectedFilters,
+                        tags: selectedFilters.tags.filter((value) => value !== tag),
+                      })
+                    }
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary hover:bg-primary/20"
+                  >
+                    {tag}
+                    <X className="h-3 w-3" />
+                  </button>
+                ))}
+                <button onClick={clearFilters} className="text-sm font-medium text-muted-foreground hover:text-foreground">
                   Clear all
                 </button>
               </div>
@@ -198,12 +256,22 @@ export default function Home() {
             {/* Results Count */}
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
-                {filteredPrograms.length} program{filteredPrograms.length !== 1 ? "s" : ""} found
+                {isLoading
+                  ? "Loading programs..."
+                  : `${filteredPrograms.length} program${filteredPrograms.length !== 1 ? "s" : ""} found`}
               </h2>
             </div>
 
             {/* Programs Grid */}
-            {filteredPrograms.length > 0 ? (
+            {errorMessage ? (
+              <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
+                {errorMessage}
+              </div>
+            ) : isLoading ? (
+              <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
+                Fetching the latest opportunities...
+              </div>
+            ) : filteredPrograms.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
                 {filteredPrograms.map((program) => (
                   <ProgramCard key={program.id} program={program} />
@@ -211,9 +279,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="rounded-lg border border-border bg-card p-12 text-center">
-                <p className="text-muted-foreground">
-                  No programs match your search criteria. Try adjusting your filters.
-                </p>
+                <p className="text-muted-foreground">No programs match your search criteria. Try adjusting your filters.</p>
               </div>
             )}
           </div>
