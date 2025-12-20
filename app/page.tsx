@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Search, X } from "lucide-react"
 import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
@@ -43,6 +43,7 @@ export default function Home() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [totalPrograms, setTotalPrograms] = useState(0)
   const [hasMore, setHasMore] = useState(true)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
@@ -63,9 +64,32 @@ export default function Home() {
     setErrorMessage(null)
 
     try {
-      const response = await fetch(`${PROGRAMS_ENDPOINT}?page=${pageToLoad}&limit=${PAGE_SIZE}`, {
-        signal,
+      const queryParams = new URLSearchParams({
+        page: String(pageToLoad),
+        limit: String(PAGE_SIZE),
       })
+
+      if (searchQuery.trim()) {
+        queryParams.set("search", searchQuery.trim())
+      }
+
+      if (selectedFilters.organization.length > 0) {
+        queryParams.set("organization", selectedFilters.organization.join(","))
+      }
+
+      if (selectedFilters.type.length > 0) {
+        queryParams.set("type", selectedFilters.type.join(","))
+      }
+
+      if (selectedFilters.tags.length > 0) {
+        queryParams.set("tags", selectedFilters.tags.join(","))
+      }
+
+      if (selectedFilters.location.length > 0) {
+        queryParams.set("location", selectedFilters.location.join(","))
+      }
+
+      const response = await fetch(`${PROGRAMS_ENDPOINT}?${queryParams.toString()}`, { signal })
 
       if (!response.ok) {
         throw new Error("Request failed")
@@ -90,20 +114,25 @@ export default function Home() {
 
       setPrograms((prevPrograms) => (append ? [...prevPrograms, ...mappedPrograms] : mappedPrograms))
       setPage(pageToLoad)
-      setHasMore(mappedPrograms.length === PAGE_SIZE)
+      const totalCount = typeof data.total === "number" ? data.total : mappedPrograms.length
+      setTotalPrograms(totalCount)
+      setHasMore(pageToLoad * PAGE_SIZE < totalCount)
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
         setErrorMessage("We couldn’t load programs right now. Please try again later.")
+        setPrograms([])
+        setTotalPrograms(0)
       }
     } finally {
       setIsLoading(false)
       setIsLoadingMore(false)
     }
-  }, [])
+  }, [searchQuery, selectedFilters])
 
   useEffect(() => {
     const controller = new AbortController()
 
+    setHasMore(true)
     fetchPrograms({ pageToLoad: 1, append: false, signal: controller.signal })
 
     return () => controller.abort()
@@ -168,44 +197,6 @@ export default function Home() {
 
     return () => observer.disconnect()
   }, [fetchPrograms, hasMore, isLoading, isLoadingMore, page])
-
-  const filteredPrograms = useMemo(() => {
-    return programs.filter((program) => {
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase()
-        const matchesSearch =
-          program.program.toLowerCase().includes(query) ||
-          program.organization.toLowerCase().includes(query) ||
-          (program.location?.toLowerCase().includes(query) ?? false) ||
-          (program.description?.toLowerCase().includes(query) ?? false) ||
-          (program.type?.toLowerCase().includes(query) ?? false) ||
-          program.tags.some((tag) => tag.toLowerCase().includes(query))
-        if (!matchesSearch) return false
-      }
-
-      if (selectedFilters.location.length > 0 && !selectedFilters.location.includes(program.location ?? "")) {
-        return false
-      }
-
-      if (selectedFilters.type.length > 0 && !selectedFilters.type.includes(program.type ?? "")) {
-        return false
-      }
-
-      if (
-        selectedFilters.organization.length > 0 &&
-        !selectedFilters.organization.includes(program.organization ?? "")
-      ) {
-        return false
-      }
-
-      if (selectedFilters.tags.length > 0) {
-        const hasMatchingTag = selectedFilters.tags.some((tag) => program.tags.includes(tag))
-        if (!hasMatchingTag) return false
-      }
-
-      return true
-    })
-  }, [programs, searchQuery, selectedFilters])
 
   const clearFilters = () => {
     setSearchQuery("")
@@ -345,7 +336,7 @@ export default function Home() {
               <h2 className="text-lg font-semibold text-foreground">
                 {isLoading
                   ? "Loading programs..."
-                  : `${filteredPrograms.length} program${filteredPrograms.length !== 1 ? "s" : ""} found`}
+                  : `${totalPrograms} program${totalPrograms !== 1 ? "s" : ""} found`}
               </h2>
             </div>
 
@@ -358,10 +349,10 @@ export default function Home() {
               <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
                 Fetching the latest opportunities...
               </div>
-            ) : filteredPrograms.length > 0 ? (
+            ) : programs.length > 0 ? (
               <>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {filteredPrograms.map((program) => (
+                  {programs.map((program) => (
                     <ProgramCard key={program.id} program={program} />
                   ))}
                 </div>
