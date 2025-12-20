@@ -67,15 +67,6 @@ export default function ProgramCard({ program }: ProgramCardProps) {
             </span>
           ))}
         </div>
-
-        {/* Footer Info */}
-        <div className="flex flex-col gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            <span>Start: {program.startDate}</span>
-          </div>
-          <div className="font-semibold text-foreground">Tuition: {program.tuition}</div>
-        </div>
       </div>
     </div>
   )
