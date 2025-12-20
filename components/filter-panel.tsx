@@ -2,24 +2,25 @@
 
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
+import type { CounselingProgram } from "@/lib/counseling-programs"
 
 interface FilterPanelProps {
   selectedFilters: {
-    distance: number | null
-    city: string[]
+    location: string[]
     type: string[]
-    college: string[]
+    organization: string[]
+    tags: string[]
   }
   setSelectedFilters: (filters: any) => void
-  programs: any[]
+  programs: CounselingProgram[]
 }
 
 export default function FilterPanel({ selectedFilters, setSelectedFilters, programs }: FilterPanelProps) {
   const [expandedSections, setExpandedSections] = useState({
-    distance: true,
-    city: true,
+    location: true,
     type: true,
-    college: true,
+    organization: true,
+    tags: true,
   })
 
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -29,82 +30,47 @@ export default function FilterPanel({ selectedFilters, setSelectedFilters, progr
     }))
   }
 
-  // Get unique values
-  const uniqueCities = Array.from(new Set(programs.map((p) => p.city))).sort()
-  const uniqueTypes = Array.from(new Set(programs.map((p) => p.type))).sort()
-  const uniqueColleges = Array.from(new Set(programs.map((p) => p.college))).sort()
-
-  const distances = [10, 25, 50, 100]
+  const uniqueLocations = Array.from(new Set(programs.map((p) => p.location).filter(Boolean))).sort() as string[]
+  const uniqueTypes = Array.from(new Set(programs.map((p) => p.type).filter(Boolean))).sort() as string[]
+  const uniqueOrganizations = Array.from(new Set(programs.map((p) => p.organization).filter(Boolean))).sort()
+  const uniqueTags = Array.from(new Set(programs.flatMap((p) => p.tags))).sort()
 
   return (
     <div className="space-y-4 rounded-lg border border-border bg-card p-6">
       <h3 className="font-semibold text-foreground">Filters</h3>
 
-      {/* Distance Filter */}
+      {/* Location Filter */}
       <div className="space-y-3 border-b border-border pb-4">
         <button
-          onClick={() => toggleSection("distance")}
+          onClick={() => toggleSection("location")}
           className="flex w-full items-center justify-between text-sm font-medium text-foreground hover:text-primary"
         >
-          Distance
-          <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.distance ? "rotate-180" : ""}`} />
+          Location
+          <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.location ? "rotate-180" : ""}`} />
         </button>
-        {expandedSections.distance && (
-          <div className="space-y-2">
-            {distances.map((distance) => (
-              <label key={distance} className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="radio"
-                  name="distance"
-                  value={distance}
-                  checked={selectedFilters.distance === distance}
-                  onChange={() =>
-                    setSelectedFilters({
-                      ...selectedFilters,
-                      distance: selectedFilters.distance === distance ? null : distance,
-                    })
-                  }
-                  className="h-4 w-4 cursor-pointer"
-                />
-                <span className="text-sm text-muted-foreground">Within {distance} miles</span>
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* City Filter */}
-      <div className="space-y-3 border-b border-border pb-4">
-        <button
-          onClick={() => toggleSection("city")}
-          className="flex w-full items-center justify-between text-sm font-medium text-foreground hover:text-primary"
-        >
-          City
-          <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.city ? "rotate-180" : ""}`} />
-        </button>
-        {expandedSections.city && (
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {uniqueCities.map((city) => (
-              <label key={city} className="flex cursor-pointer items-center gap-2">
+        {expandedSections.location && (
+          <div className="max-h-48 space-y-2 overflow-y-auto">
+            {uniqueLocations.map((location) => (
+              <label key={location} className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={selectedFilters.city.includes(city)}
+                  checked={selectedFilters.location.includes(location)}
                   onChange={(e) => {
                     if (e.target.checked) {
                       setSelectedFilters({
                         ...selectedFilters,
-                        city: [...selectedFilters.city, city],
+                        location: [...selectedFilters.location, location],
                       })
                     } else {
                       setSelectedFilters({
                         ...selectedFilters,
-                        city: selectedFilters.city.filter((c) => c !== city),
+                        location: selectedFilters.location.filter((l) => l !== location),
                       })
                     }
                   }}
                   className="h-4 w-4 cursor-pointer"
                 />
-                <span className="text-sm text-muted-foreground">{city}</span>
+                <span className="text-sm text-muted-foreground">{location}</span>
               </label>
             ))}
           </div>
@@ -149,38 +115,78 @@ export default function FilterPanel({ selectedFilters, setSelectedFilters, progr
         )}
       </div>
 
-      {/* College Filter */}
-      <div className="space-y-3">
+      {/* Organization Filter */}
+      <div className="space-y-3 border-b border-border pb-4">
         <button
-          onClick={() => toggleSection("college")}
+          onClick={() => toggleSection("organization")}
           className="flex w-full items-center justify-between text-sm font-medium text-foreground hover:text-primary"
         >
-          College
-          <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.college ? "rotate-180" : ""}`} />
+          Organization
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${expandedSections.organization ? "rotate-180" : ""}`}
+          />
         </button>
-        {expandedSections.college && (
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {uniqueColleges.map((college) => (
-              <label key={college} className="flex cursor-pointer items-center gap-2">
+        {expandedSections.organization && (
+          <div className="max-h-48 space-y-2 overflow-y-auto">
+            {uniqueOrganizations.map((organization) => (
+              <label key={organization} className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={selectedFilters.college.includes(college)}
+                  checked={selectedFilters.organization.includes(organization)}
                   onChange={(e) => {
                     if (e.target.checked) {
                       setSelectedFilters({
                         ...selectedFilters,
-                        college: [...selectedFilters.college, college],
+                        organization: [...selectedFilters.organization, organization],
                       })
                     } else {
                       setSelectedFilters({
                         ...selectedFilters,
-                        college: selectedFilters.college.filter((c) => c !== college),
+                        organization: selectedFilters.organization.filter((o) => o !== organization),
                       })
                     }
                   }}
                   className="h-4 w-4 cursor-pointer"
                 />
-                <span className="text-sm text-muted-foreground">{college}</span>
+                <span className="text-sm text-muted-foreground">{organization}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tags Filter */}
+      <div className="space-y-3">
+        <button
+          onClick={() => toggleSection("tags")}
+          className="flex w-full items-center justify-between text-sm font-medium text-foreground hover:text-primary"
+        >
+          Tags
+          <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.tags ? "rotate-180" : ""}`} />
+        </button>
+        {expandedSections.tags && (
+          <div className="max-h-48 space-y-2 overflow-y-auto">
+            {uniqueTags.map((tag) => (
+              <label key={tag} className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedFilters.tags.includes(tag)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedFilters({
+                        ...selectedFilters,
+                        tags: [...selectedFilters.tags, tag],
+                      })
+                    } else {
+                      setSelectedFilters({
+                        ...selectedFilters,
+                        tags: selectedFilters.tags.filter((t) => t !== tag),
+                      })
+                    }
+                  }}
+                  className="h-4 w-4 cursor-pointer"
+                />
+                <span className="text-sm text-muted-foreground">{tag}</span>
               </label>
             ))}
           </div>
