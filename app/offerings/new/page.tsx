@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { API_BASE_URL, getAccessToken, getStoredUser } from "@/lib/auth"
 
-const PROGRAMS_ENDPOINT = `${API_BASE_URL}/programs`
+const PROGRAMS_ENDPOINT = `${API_BASE_URL}/counseling/programs`
 
 const emptyForm = {
   program: "",
@@ -150,11 +150,6 @@ export default function NewOfferingPage() {
         {successMessage ? (
           <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             {successMessage}{" "}
-            {createdId ? (
-              <Link href={`/offerings/${createdId}/edit`} className="font-semibold text-emerald-700 underline">
-                Edit it now
-              </Link>
-            ) : null}
           </div>
         ) : null}
 
