@@ -88,23 +88,21 @@ export default function Home() {
         queryParams.set("search", debouncedSearchQuery.trim())
       }
 
-      if (debouncedFilters.organization.length > 0) {
-        queryParams.set("organization", debouncedFilters.organization.join(","))
-      }
-
-      if (debouncedFilters.type.length > 0) {
-        queryParams.set("type", debouncedFilters.type.join(","))
-      }
-
-      if (debouncedFilters.tags.length > 0) {
-        queryParams.set("tags", debouncedFilters.tags.join(","))
-      }
-
-      if (debouncedFilters.location.length > 0) {
-        debouncedFilters.location.forEach((location) => {
-          queryParams.append("location", location)
-        })
-      }
+      debouncedFilters.organization.forEach((org) => {
+        queryParams.append("organization", org)
+      })
+      
+      debouncedFilters.type.forEach((type) => {
+        queryParams.append("type", type)
+      })
+      
+      debouncedFilters.tags.forEach((tag) => {
+        queryParams.append("tags", tag)
+      })
+      
+      debouncedFilters.location.forEach((location) => {
+        queryParams.append("location", location)
+      })
 
       const response = await fetch(`${PROGRAMS_ENDPOINT}?${queryParams.toString()}`, { signal })
 
