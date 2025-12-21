@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation"
 import { API_BASE_URL, getAccessToken, getStoredUser } from "@/lib/auth"
 import type { CounselingProgram } from "@/lib/counseling-programs"
 
-const PROGRAM_DETAILS_ENDPOINT = `${API_BASE_URL}/programs`
+const PROGRAM_DETAILS_ENDPOINT = `${API_BASE_URL}/counseling/programs`
 
 const normalizeTags = (tags: unknown): string[] => {
   if (Array.isArray(tags)) {
