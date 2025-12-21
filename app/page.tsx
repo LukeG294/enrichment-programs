@@ -6,6 +6,7 @@ import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
 import type { CounselingProgram } from "@/lib/counseling-programs"
 import Image from "next/image"
+import { getAccessToken, getStoredUser } from "@/lib/auth"
 
 const PROGRAMS_ENDPOINT = "https://api.ckpnt.com/counseling/programs"
 const FILTERS_ENDPOINT = "https://api.ckpnt.com/counseling/programs/filters"
@@ -49,6 +50,13 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const [canEdit, setCanEdit] = useState(false)
+
+  useEffect(() => {
+    const token = getAccessToken()
+    const user = getStoredUser()
+    setCanEdit(Boolean(token && user))
+  }, [])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -396,7 +404,7 @@ export default function Home() {
                   }`}
                 >
                   {programs.map((program) => (
-                    <ProgramCard key={program.id} program={program} />
+                    <ProgramCard key={program.id} program={program} canEdit={canEdit} />
                   ))}
                 </div>
                 <div ref={loadMoreRef} className="mt-6 flex justify-center text-sm text-muted-foreground">
