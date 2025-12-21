@@ -342,11 +342,11 @@ export default function Home() {
 
             {/* Programs Grid */}
             {errorMessage ? (
-              <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
+              <div className="rounded-lg border border-border p-12 text-center text-muted-foreground">
                 {errorMessage}
               </div>
             ) : isLoading ? (
-              <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
+              <div className="rounded-lg border border-border p-12 text-center text-muted-foreground">
                 Fetching the latest opportunities...
               </div>
             ) : programs.length > 0 ? (
@@ -365,7 +365,7 @@ export default function Home() {
                 </div>
               </>
             ) : (
-              <div className="rounded-lg border border-border bg-card p-12 text-center">
+              <div className="rounded-lg border border-border p-12 text-center">
                 <p className="text-muted-foreground">No programs match your search criteria. Try adjusting your filters.</p>
               </div>
             )}

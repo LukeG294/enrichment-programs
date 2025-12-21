@@ -11,7 +11,7 @@ export default function ProgramCard({ program }: ProgramCardProps) {
   const typeColors: Record<string, string> = {
     arts: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
     business: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-    stem: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+    STEM: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
     internship: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
     humanities: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
   }
