@@ -7,6 +7,7 @@ import FilterPanel from "@/components/filter-panel"
 import type { CounselingProgram } from "@/lib/counseling-programs"
 import Image from "next/image"
 import { getAccessToken, getStoredUser } from "@/lib/auth"
+import Link from "next/link"
 
 const PROGRAMS_ENDPOINT = "https://api.ckpnt.com/counseling/programs"
 const FILTERS_ENDPOINT = "https://api.ckpnt.com/counseling/programs/filters"
@@ -250,6 +251,7 @@ export default function Home() {
     selectedFilters.tags.length > 0
 
   const isInitialLoading = isLoading && programs.length === 0 && !errorMessage
+  const showEmptyState = !isLoading && !errorMessage && programs.length === 0
   const isRefreshing = isLoading && programs.length > 0
   const resultsLabel = isInitialLoading
     ? "Loading programs..."
@@ -372,7 +374,7 @@ export default function Home() {
             )}
 
             {/* Results Count */}
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <h2
                   className={`text-lg font-semibold text-foreground transition-opacity duration-300 ${
@@ -385,6 +387,14 @@ export default function Home() {
                   <span className="text-sm text-muted-foreground">Updating results...</span>
                 )}
               </div>
+              {canEdit && (
+                <Link
+                  href="/offerings/new"
+                  className="inline-flex items-center rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                >
+                  Add program
+                </Link>
+              )}
             </div>
 
             {/* Programs Grid */}
@@ -415,11 +425,11 @@ export default function Home() {
                     : "You’ve reached the end of the list."}
                 </div>
               </>
-            ) : (
+            ) : showEmptyState ? (
               <div className="rounded-lg border border-border p-12 text-center">
                 <p className="text-muted-foreground">No programs match your search criteria. Try adjusting your filters.</p>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
