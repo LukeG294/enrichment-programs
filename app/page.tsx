@@ -101,7 +101,9 @@ export default function Home() {
       }
 
       if (debouncedFilters.location.length > 0) {
-        queryParams.set("location", debouncedFilters.location.join(","))
+        debouncedFilters.location.forEach((location) => {
+          queryParams.append("location", location)
+        })
       }
 
       const response = await fetch(`${PROGRAMS_ENDPOINT}?${queryParams.toString()}`, { signal })
