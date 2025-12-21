@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 
@@ -20,23 +20,87 @@ interface FilterPanelProps {
   }
 }
 
+const STORAGE_KEY = "enrichment-filter-expanded"
+
+type ExpandedSections = {
+  location: boolean
+  type: boolean
+  organization: boolean
+  tags: boolean
+}
+
+const defaultExpandedSections: ExpandedSections = {
+  location: true,
+  type: true,
+  organization: true,
+  tags: true,
+}
+
+const isExpandedSections = (value: unknown): value is ExpandedSections => {
+  if (!value || typeof value !== "object") {
+    return false
+  }
+  const record = value as Record<string, unknown>
+  return (
+    typeof record.location === "boolean" &&
+    typeof record.type === "boolean" &&
+    typeof record.organization === "boolean" &&
+    typeof record.tags === "boolean"
+  )
+}
+
 export default function FilterPanel({ selectedFilters, setSelectedFilters, filters }: FilterPanelProps) {
-  const [expandedSections, setExpandedSections] = useState({
-    location: true,
-    type: true,
-    organization: true,
-    tags: true,
-  })
+  const [expandedSections, setExpandedSections] = useState<ExpandedSections>(defaultExpandedSections)
 
   const toCheckboxId = (prefix: string, value: string) =>
     `${prefix}-${value.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }))
+  const persistExpandedSections = (next: ExpandedSections) => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   }
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections((prev) => {
+      const next = {
+        ...prev,
+        [section]: !prev[section],
+      }
+      persistExpandedSections(next)
+      return next
+    })
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (isExpandedSections(parsed)) {
+          setExpandedSections(parsed)
+          return
+        }
+      } catch {
+        // Ignore invalid local storage entries.
+      }
+    }
+
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches
+    if (!isDesktop) {
+      setExpandedSections({
+        location: false,
+        type: false,
+        organization: false,
+        tags: false,
+      })
+    }
+  }, [])
 
   const uniqueLocations = Array.from(new Set(filters.locations.filter(Boolean))).sort()
   const uniqueTypes = Array.from(new Set(filters.programTypes.filter(Boolean))).sort()
