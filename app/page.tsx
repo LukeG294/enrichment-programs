@@ -381,7 +381,7 @@ export default function Home() {
                     isRefreshing ? "opacity-60" : "opacity-100"
                   }`}
                 >
-                  <span className="tabular-nums">{resultsLabel}</span>
+                  <span>{resultsLabel}</span>
                 </h2>
                 {isRefreshing && (
                   <span className="text-sm text-muted-foreground">Updating results...</span>
