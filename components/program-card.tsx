@@ -4,9 +4,10 @@ import type { CounselingProgram } from "@/lib/counseling-programs"
 
 interface ProgramCardProps {
   program: CounselingProgram
+  canEdit?: boolean
 }
 
-export default function ProgramCard({ program }: ProgramCardProps) {
+export default function ProgramCard({ program, canEdit = false }: ProgramCardProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const typeColors: Record<string, string> = {
     arts: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
@@ -89,16 +90,28 @@ export default function ProgramCard({ program }: ProgramCardProps) {
           </div>
         )}
 
-        {program.link && (
-          <a
-            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-            href={program.link}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Learn more
-            <ExternalLink className="h-4 w-4" />
-          </a>
+        {(program.link || canEdit) && (
+          <div className="flex flex-wrap items-center gap-3">
+            {program.link && (
+              <a
+                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                href={program.link}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Learn more
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            )}
+            {canEdit && (
+              <a
+                className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground transition hover:bg-muted"
+                href={`/offerings/${program.id}/edit`}
+              >
+                Edit offering
+              </a>
+            )}
+          </div>
         )}
       </div>
     </div>
