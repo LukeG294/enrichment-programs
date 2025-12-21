@@ -63,7 +63,7 @@ export default function ProgramCard({ program }: ProgramCardProps) {
               <button
                 type="button"
                 onClick={() => setIsDescriptionExpanded((prev) => !prev)}
-                className="ml-1 inline-flex items-center text-primary hover:underline"
+                className="inline-flex items-center text-primary hover:underline"
               >
                 {isDescriptionExpanded ? "Show less" : "Show all"}
               </button>

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface FilterPanelProps {
   selectedFilters: {
@@ -26,6 +27,9 @@ export default function FilterPanel({ selectedFilters, setSelectedFilters, filte
     organization: true,
     tags: true,
   })
+
+  const toCheckboxId = (prefix: string, value: string) =>
+    `${prefix}-${value.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections((prev) => ({
@@ -54,29 +58,31 @@ export default function FilterPanel({ selectedFilters, setSelectedFilters, filte
         </button>
         {expandedSections.location && (
           <div className="max-h-48 space-y-2 overflow-y-auto">
-            {uniqueLocations.map((location) => (
-              <label key={location} className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selectedFilters.location.includes(location)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedFilters({
-                        ...selectedFilters,
-                        location: [...selectedFilters.location, location],
-                      })
-                    } else {
-                      setSelectedFilters({
-                        ...selectedFilters,
-                        location: selectedFilters.location.filter((l) => l !== location),
-                      })
-                    }
-                  }}
-                  className="h-4 w-4 cursor-pointer"
-                />
-                <span className="text-sm text-muted-foreground">{location}</span>
-              </label>
-            ))}
+            {uniqueLocations.map((location) => {
+              const checkboxId = toCheckboxId("location", location)
+              return (
+                <label key={location} htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={selectedFilters.location.includes(location)}
+                    onCheckedChange={(checked) => {
+                      if (checked === true) {
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          location: [...selectedFilters.location, location],
+                        })
+                      } else {
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          location: selectedFilters.location.filter((l) => l !== location),
+                        })
+                      }
+                    }}
+                  />
+                  <span className="text-sm text-muted-foreground">{location}</span>
+                </label>
+              )
+            })}
           </div>
         )}
       </div>
@@ -92,29 +98,31 @@ export default function FilterPanel({ selectedFilters, setSelectedFilters, filte
         </button>
         {expandedSections.type && (
           <div className="space-y-2">
-            {uniqueTypes.map((type) => (
-              <label key={type} className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selectedFilters.type.includes(type)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedFilters({
-                        ...selectedFilters,
-                        type: [...selectedFilters.type, type],
-                      })
-                    } else {
-                      setSelectedFilters({
-                        ...selectedFilters,
-                        type: selectedFilters.type.filter((t) => t !== type),
-                      })
-                    }
-                  }}
-                  className="h-4 w-4 cursor-pointer"
-                />
-                <span className="text-sm text-muted-foreground capitalize">{type}</span>
-              </label>
-            ))}
+            {uniqueTypes.map((type) => {
+              const checkboxId = toCheckboxId("type", type)
+              return (
+                <label key={type} htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={selectedFilters.type.includes(type)}
+                    onCheckedChange={(checked) => {
+                      if (checked === true) {
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          type: [...selectedFilters.type, type],
+                        })
+                      } else {
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          type: selectedFilters.type.filter((t) => t !== type),
+                        })
+                      }
+                    }}
+                  />
+                  <span className="text-sm text-muted-foreground capitalize">{type}</span>
+                </label>
+              )
+            })}
           </div>
         )}
       </div>
@@ -132,29 +140,31 @@ export default function FilterPanel({ selectedFilters, setSelectedFilters, filte
         </button>
         {expandedSections.organization && (
           <div className="max-h-48 space-y-2 overflow-y-auto">
-            {uniqueOrganizations.map((organization) => (
-              <label key={organization} className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selectedFilters.organization.includes(organization)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedFilters({
-                        ...selectedFilters,
-                        organization: [...selectedFilters.organization, organization],
-                      })
-                    } else {
-                      setSelectedFilters({
-                        ...selectedFilters,
-                        organization: selectedFilters.organization.filter((o) => o !== organization),
-                      })
-                    }
-                  }}
-                  className="h-4 w-4 cursor-pointer"
-                />
-                <span className="text-sm text-muted-foreground">{organization}</span>
-              </label>
-            ))}
+            {uniqueOrganizations.map((organization) => {
+              const checkboxId = toCheckboxId("organization", organization)
+              return (
+                <label key={organization} htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={selectedFilters.organization.includes(organization)}
+                    onCheckedChange={(checked) => {
+                      if (checked === true) {
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          organization: [...selectedFilters.organization, organization],
+                        })
+                      } else {
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          organization: selectedFilters.organization.filter((o) => o !== organization),
+                        })
+                      }
+                    }}
+                  />
+                  <span className="text-sm text-muted-foreground">{organization}</span>
+                </label>
+              )
+            })}
           </div>
         )}
       </div>
@@ -170,29 +180,31 @@ export default function FilterPanel({ selectedFilters, setSelectedFilters, filte
         </button>
         {expandedSections.tags && (
           <div className="max-h-48 space-y-2 overflow-y-auto">
-            {uniqueTags.map((tag) => (
-              <label key={tag} className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selectedFilters.tags.includes(tag)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedFilters({
-                        ...selectedFilters,
-                        tags: [...selectedFilters.tags, tag],
-                      })
-                    } else {
-                      setSelectedFilters({
-                        ...selectedFilters,
-                        tags: selectedFilters.tags.filter((t) => t !== tag),
-                      })
-                    }
-                  }}
-                  className="h-4 w-4 cursor-pointer"
-                />
-                <span className="text-sm text-muted-foreground">{tag}</span>
-              </label>
-            ))}
+            {uniqueTags.map((tag) => {
+              const checkboxId = toCheckboxId("tag", tag)
+              return (
+                <label key={tag} htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={selectedFilters.tags.includes(tag)}
+                    onCheckedChange={(checked) => {
+                      if (checked === true) {
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          tags: [...selectedFilters.tags, tag],
+                        })
+                      } else {
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          tags: selectedFilters.tags.filter((t) => t !== tag),
+                        })
+                      }
+                    }}
+                  />
+                  <span className="text-sm text-muted-foreground">{tag}</span>
+                </label>
+              )
+            })}
           </div>
         )}
       </div>
