@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Search, X } from "lucide-react"
+import { ArrowUp, Search, X } from "lucide-react"
 import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
 import type { CounselingProgram } from "@/lib/counseling-programs"
@@ -45,6 +45,7 @@ export default function Home() {
   const [page, setPage] = useState(1)
   const [totalPrograms, setTotalPrograms] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
   const fetchPrograms = useCallback(async ({
@@ -64,6 +65,9 @@ export default function Home() {
     setErrorMessage(null)
 
     try {
+      if (pageToLoad > 1) {
+        await new Promise((resolve) => setTimeout(resolve, 150))
+      }
       const queryParams = new URLSearchParams({
         page: String(pageToLoad),
         limit: String(PAGE_SIZE),
@@ -137,6 +141,17 @@ export default function Home() {
 
     return () => controller.abort()
   }, [fetchPrograms])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 240)
+    }
+
+    handleScroll()
+    window.addEventListener("scroll", handleScroll, { passive: true })
+
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -372,6 +387,17 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        aria-label="Jump to top"
+        className={`fixed bottom-6 right-6 z-50 inline-flex items-center justify-center rounded-full border border-border bg-background/90 p-3 text-foreground shadow-lg backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-background ${
+          showScrollTop ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <ArrowUp className="h-4 w-4" />
+      </button>
     </main>
   )
 }
