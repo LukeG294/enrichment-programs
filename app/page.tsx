@@ -32,6 +32,8 @@ export default function Home() {
     organization: [] as string[],
     tags: [] as string[],
   })
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery)
+  const [debouncedFilters, setDebouncedFilters] = useState(selectedFilters)
   const [programs, setPrograms] = useState<CounselingProgram[]>([])
   const [availableFilters, setAvailableFilters] = useState({
     locations: [] as string[],
@@ -47,6 +49,15 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+      setDebouncedFilters(selectedFilters)
+    }, 350)
+
+    return () => clearTimeout(timeout)
+  }, [searchQuery, selectedFilters])
 
   const fetchPrograms = useCallback(async ({
     pageToLoad,
@@ -73,24 +84,24 @@ export default function Home() {
         limit: String(PAGE_SIZE),
       })
 
-      if (searchQuery.trim()) {
-        queryParams.set("search", searchQuery.trim())
+      if (debouncedSearchQuery.trim()) {
+        queryParams.set("search", debouncedSearchQuery.trim())
       }
 
-      if (selectedFilters.organization.length > 0) {
-        queryParams.set("organization", selectedFilters.organization.join(","))
+      if (debouncedFilters.organization.length > 0) {
+        queryParams.set("organization", debouncedFilters.organization.join(","))
       }
 
-      if (selectedFilters.type.length > 0) {
-        queryParams.set("type", selectedFilters.type.join(","))
+      if (debouncedFilters.type.length > 0) {
+        queryParams.set("type", debouncedFilters.type.join(","))
       }
 
-      if (selectedFilters.tags.length > 0) {
-        queryParams.set("tags", selectedFilters.tags.join(","))
+      if (debouncedFilters.tags.length > 0) {
+        queryParams.set("tags", debouncedFilters.tags.join(","))
       }
 
-      if (selectedFilters.location.length > 0) {
-        queryParams.set("location", selectedFilters.location.join(","))
+      if (debouncedFilters.location.length > 0) {
+        queryParams.set("location", debouncedFilters.location.join(","))
       }
 
       const response = await fetch(`${PROGRAMS_ENDPOINT}?${queryParams.toString()}`, { signal })
@@ -131,7 +142,7 @@ export default function Home() {
       setIsLoading(false)
       setIsLoadingMore(false)
     }
-  }, [searchQuery, selectedFilters])
+  }, [debouncedFilters, debouncedSearchQuery])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -229,6 +240,12 @@ export default function Home() {
     selectedFilters.type.length > 0 ||
     selectedFilters.organization.length > 0 ||
     selectedFilters.tags.length > 0
+
+  const isInitialLoading = isLoading && programs.length === 0 && !errorMessage
+  const isRefreshing = isLoading && programs.length > 0
+  const resultsLabel = isInitialLoading
+    ? "Loading programs..."
+    : `${totalPrograms} program${totalPrograms !== 1 ? "s" : ""} found`
 
   return (
     <main className="min-h-screen bg-background">
@@ -348,11 +365,18 @@ export default function Home() {
 
             {/* Results Count */}
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
-                {isLoading
-                  ? "Loading programs..."
-                  : `${totalPrograms} program${totalPrograms !== 1 ? "s" : ""} found`}
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2
+                  className={`text-lg font-semibold text-foreground transition-opacity duration-300 ${
+                    isRefreshing ? "opacity-60" : "opacity-100"
+                  }`}
+                >
+                  <span className="tabular-nums">{resultsLabel}</span>
+                </h2>
+                {isRefreshing && (
+                  <span className="text-sm text-muted-foreground">Updating results...</span>
+                )}
+              </div>
             </div>
 
             {/* Programs Grid */}
@@ -360,13 +384,17 @@ export default function Home() {
               <div className="rounded-lg border border-border p-12 text-center text-muted-foreground">
                 {errorMessage}
               </div>
-            ) : isLoading ? (
+            ) : isInitialLoading ? (
               <div className="rounded-lg border border-border p-12 text-center text-muted-foreground">
                 Fetching the latest opportunities...
               </div>
             ) : programs.length > 0 ? (
               <>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div
+                  className={`grid gap-4 transition-opacity duration-300 md:grid-cols-2 ${
+                    isRefreshing ? "opacity-60" : "opacity-100"
+                  }`}
+                >
                   {programs.map((program) => (
                     <ProgramCard key={program.id} program={program} />
                   ))}

@@ -58,15 +58,18 @@ export default function ProgramCard({ program }: ProgramCardProps) {
         {description && (
           <p className="mb-4 text-sm text-foreground/80">
             {visibleDescription}
-            {hasLongDescription && !isDescriptionExpanded && "… "}
+            {hasLongDescription && !isDescriptionExpanded && "…"}
             {hasLongDescription && (
-              <button
-                type="button"
-                onClick={() => setIsDescriptionExpanded((prev) => !prev)}
-                className="inline-flex items-center text-primary hover:underline"
-              >
-                {isDescriptionExpanded ? "Show less" : "Show all"}
-              </button>
+              <>
+                <span aria-hidden="true"> </span>
+                <button
+                  type="button"
+                  onClick={() => setIsDescriptionExpanded((prev) => !prev)}
+                  className="inline-flex items-center text-primary hover:underline"
+                >
+                  {isDescriptionExpanded ? "Show less" : "Show all"}
+                </button>
+              </>
             )}
           </p>
         )}
