@@ -80,8 +80,8 @@ export default function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-white to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 shadow-lg rounded-xl p-8 space-y-6 border border-slate-200/60 dark:border-slate-700/60">
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">Manager</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Login to your campus dashboard.</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">College Counseling</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Login to manage offerings.</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -209,17 +209,7 @@ export default function LoginForm() {
             </form>
           ) : (
             <div>
-              <a
-                href="https://ckpnt.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block w-full rounded-xl bg-white text-black py-2.5 text-sm font-medium text-center border border-neutral-300 shadow-sm transition-all duration-200 hover:border-black hover:shadow-md active:scale-[0.98]"
-              >
-                <span className="inline-flex items-center gap-1">
-                  Or, get started at ckpnt.com
-                  <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
-                </span>
-              </a>
+             
             </div>
           )}
         </div>

@@ -105,4 +105,49 @@ export class Auth {
 
     return data as { success: boolean; message: string }
   }
+  async requestPasswordReset(email: string) {
+    const response = await fetch(`${API_BASE_URL}/auth/request-reset`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const error: any = new Error(data?.message || 'Unable to request password reset');
+      if (typeof data?.code !== 'undefined') {
+        error.code = data.code;
+      }
+
+      throw error;
+    }
+
+    return data as { success: boolean; code: number; message: string };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token, newPassword }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const error: any = new Error(data?.message || 'Unable to reset password');
+      if (typeof data?.code !== 'undefined') {
+        error.code = data.code;
+      }
+
+      throw error;
+    }
+
+    return data as { success: boolean; code: number; message: string };
+  }
 }
