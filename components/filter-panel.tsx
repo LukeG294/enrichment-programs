@@ -40,7 +40,7 @@ export default function FilterPanel({ selectedFilters, setSelectedFilters, filte
   const uniqueTags = Array.from(new Set(filters.tags.filter(Boolean))).sort()
 
   return (
-    <div className="space-y-4 rounded-lg border border-border bg-card p-6">
+    <div className="space-y-4 rounded-lg border border-border p-6">
       <h3 className="font-semibold text-foreground">Filters</h3>
 
       {/* Location Filter */}

@@ -26,7 +26,7 @@ export default function ProgramCard({ program }: ProgramCardProps) {
       : description
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card transition-all hover:shadow-md">
+    <div className="overflow-hidden rounded-lg border border-border  transition-all hover:shadow-md">
       <div className="p-6">
         {/* Header */}
         <div className="mb-4 flex items-start justify-between gap-3">

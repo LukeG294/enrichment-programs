@@ -218,7 +218,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-card">
+      <div className="border-b border-border ">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6 flex items-center gap-3">
             <Image src="/ljcds.png" alt="La Jolla Country Day School logo" width={48} height={48} priority />
