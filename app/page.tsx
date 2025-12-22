@@ -507,6 +507,7 @@ export default function Home() {
               onUpdateType={handleUpdateType}
               onDeleteType={handleDeleteType}
             />
+            
           </aside>
 
           {/* Results */}
