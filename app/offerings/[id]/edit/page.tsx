@@ -5,8 +5,10 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { API_BASE_URL, getAccessToken, getStoredUser } from "@/lib/auth"
 import type { CounselingProgram } from "@/lib/counseling-programs"
+import type { CounselingProgramType } from "@/lib/counseling-program-types"
 
 const PROGRAM_DETAILS_ENDPOINT = `${API_BASE_URL}/counseling/programs`
+const PROGRAM_TYPES_ENDPOINT = `${API_BASE_URL}/counseling/program-types`
 
 const normalizeTags = (tags: unknown): string[] => {
   if (Array.isArray(tags)) {
@@ -21,13 +23,39 @@ const normalizeTags = (tags: unknown): string[] => {
   return []
 }
 
+const parseProgramTypeInfo = (program: any) => {
+  const rawType = program?.program_type ?? program?.programType ?? program?.program_type_id ?? null
+  if (rawType && typeof rawType === "object") {
+    const id = Number((rawType as any).id)
+    const name = typeof (rawType as any).name === "string" ? String((rawType as any).name).trim() : null
+    const color = typeof (rawType as any).color === "string" ? String((rawType as any).color).trim() : null
+    return {
+      programTypeId: Number.isInteger(id) ? id : null,
+      programTypeName: name,
+      programTypeColor: color,
+    }
+  }
+  if (typeof rawType === "number") {
+    return { programTypeId: rawType, programTypeName: null, programTypeColor: null }
+  }
+  if (typeof rawType === "string" && rawType.trim()) {
+    const asNumber = Number(rawType)
+    return {
+      programTypeId: Number.isInteger(asNumber) ? asNumber : null,
+      programTypeName: Number.isInteger(asNumber) ? null : rawType.trim(),
+      programTypeColor: null,
+    }
+  }
+  return { programTypeId: null, programTypeName: null, programTypeColor: null }
+}
+
 const emptyForm = {
   program: "",
   organization: "",
   location: "",
   description: "",
   link: "",
-  type: "",
+  programTypeId: "",
   tags: "",
 }
 
@@ -48,6 +76,7 @@ export default function EditOfferingPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [formErrors, setFormErrors] = useState<FormErrors>({})
+  const [programTypes, setProgramTypes] = useState<CounselingProgramType[]>([])
 
   const parsedOfferingId = useMemo(() => {
     if (typeof offeringId === "string") {
@@ -72,11 +101,44 @@ export default function EditOfferingPage() {
       location: program.location ?? "",
       description: program.description ?? "",
       link: program.link ?? "",
-      type: program.type ?? "",
+      programTypeId: program.programTypeId ? String(program.programTypeId) : "",
       tags: normalizeTags(program.tags).join(", "),
     }
     setFormState(nextState)
     setInitialData(nextState)
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const fetchProgramTypes = async () => {
+      try {
+        const response = await fetch(PROGRAM_TYPES_ENDPOINT, { signal: controller.signal })
+        const data = await response.json()
+
+        if (!response.ok || !data?.success || !Array.isArray(data.programTypes)) {
+          throw new Error("Unable to load types")
+        }
+
+        const mappedTypes: CounselingProgramType[] = data.programTypes
+          .map((type: any) => ({
+            id: Number(type.id),
+            name: String(type.name ?? "").trim(),
+            color: String(type.color ?? "").trim(),
+          }))
+          .filter((type: CounselingProgramType) => Number.isInteger(type.id) && type.name)
+
+        setProgramTypes(mappedTypes)
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setProgramTypes([])
+        }
+      }
+    }
+
+    void fetchProgramTypes()
+
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
@@ -114,6 +176,8 @@ export default function EditOfferingPage() {
           throw new Error(data?.message || "Unable to load program")
         }
 
+        const programTypeInfo = parseProgramTypeInfo(data.program)
+
         const programData: CounselingProgram = {
           id: Number(data.program.id),
           program: String(data.program.program ?? "").trim(),
@@ -121,7 +185,7 @@ export default function EditOfferingPage() {
           location: data.program.location ? String(data.program.location).trim() : null,
           description: data.program.description ? String(data.program.description).trim() : null,
           link: data.program.link ? String(data.program.link).trim() : null,
-          type: data.program.type ? String(data.program.type).trim() : null,
+          ...programTypeInfo,
           tags: normalizeTags(data.program.tags),
         }
 
@@ -200,7 +264,7 @@ export default function EditOfferingPage() {
         location: formState.location.trim() || null,
         description: formState.description.trim() || null,
         link: formState.link.trim() || null,
-        type: formState.type.trim() || null,
+        program_type: formState.programTypeId ? Number(formState.programTypeId) : null,
         tags: formState.tags,
       }
 
@@ -226,7 +290,7 @@ export default function EditOfferingPage() {
         location: data.program.location ? String(data.program.location).trim() : null,
         description: data.program.description ? String(data.program.description).trim() : null,
         link: data.program.link ? String(data.program.link).trim() : null,
-        type: data.program.type ? String(data.program.type).trim() : null,
+        ...parseProgramTypeInfo(data.program),
         tags: normalizeTags(data.program.tags),
       }
 
@@ -378,16 +442,22 @@ export default function EditOfferingPage() {
             </div>
 
             <div className="grid gap-2">
-              <label className="text-sm font-medium text-foreground" htmlFor="type">
+              <label className="text-sm font-medium text-foreground" htmlFor="programTypeId">
                 Program type
               </label>
-              <input
-                id="type"
-                value={formState.type}
-                onChange={(event) => handleChange("type", event.target.value)}
+              <select
+                id="programTypeId"
+                value={formState.programTypeId}
+                onChange={(event) => handleChange("programTypeId", event.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm"
-                placeholder="Program type"
-              />
+              >
+                <option value="">Select a program type</option>
+                {programTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="grid gap-2">
