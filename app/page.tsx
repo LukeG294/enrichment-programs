@@ -205,7 +205,27 @@ export default function Home() {
 
       setPrograms((prevPrograms) => (append ? [...prevPrograms, ...mappedPrograms] : mappedPrograms))
       setPage(pageToLoad)
-      const totalCount = typeof data.total === "number" ? data.total : mappedPrograms.length
+      const totalCount = (() => {
+        if (typeof data.total === "number") {
+          return data.total
+        }
+        if (typeof data.total === "string") {
+          const parsed = Number(data.total)
+          if (Number.isFinite(parsed)) {
+            return parsed
+          }
+        }
+        if (typeof data.totalPrograms === "number") {
+          return data.totalPrograms
+        }
+        if (typeof data.totalPrograms === "string") {
+          const parsed = Number(data.totalPrograms)
+          if (Number.isFinite(parsed)) {
+            return parsed
+          }
+        }
+        return mappedPrograms.length
+      })()
       setTotalPrograms(totalCount)
       setHasMore(pageToLoad * PAGE_SIZE < totalCount)
     } catch (error) {

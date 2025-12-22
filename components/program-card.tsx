@@ -10,8 +10,9 @@ interface ProgramCardProps {
 export default function ProgramCard({ program, canEdit = false }: ProgramCardProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const typeLabel = program.programTypeName?.trim() || "program"
-  const hasTypeColor = Boolean(program.programTypeColor)
-  const typeBadgeStyle = hasTypeColor ? { backgroundColor: program.programTypeColor, color: "#fff" } : undefined
+  const programTypeColor = program.programTypeColor ?? undefined
+  const hasTypeColor = Boolean(programTypeColor)
+  const typeBadgeStyle = hasTypeColor ? { backgroundColor: programTypeColor, color: "#fff" } : undefined
   const description = program.description?.trim() ?? ""
   const maxDescriptionLength = 160
   const hasLongDescription = description.length > maxDescriptionLength
