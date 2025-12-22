@@ -4,8 +4,10 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { API_BASE_URL, getAccessToken, getStoredUser } from "@/lib/auth"
+import type { CounselingProgramType } from "@/lib/counseling-program-types"
 
 const PROGRAMS_ENDPOINT = `${API_BASE_URL}/counseling/programs`
+const PROGRAM_TYPES_ENDPOINT = `${API_BASE_URL}/counseling/program-types`
 
 const emptyForm = {
   program: "",
@@ -13,7 +15,7 @@ const emptyForm = {
   location: "",
   description: "",
   link: "",
-  type: "",
+  programTypeId: "",
   tags: "",
 }
 
@@ -29,6 +31,7 @@ export default function NewOfferingPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [formErrors, setFormErrors] = useState<FormErrors>({})
   const [createdId, setCreatedId] = useState<number | null>(null)
+  const [programTypes, setProgramTypes] = useState<CounselingProgramType[]>([])
 
   useEffect(() => {
     const token = getAccessToken()
@@ -37,6 +40,39 @@ export default function NewOfferingPage() {
       router.replace("/login")
     }
   }, [router])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const fetchProgramTypes = async () => {
+      try {
+        const response = await fetch(PROGRAM_TYPES_ENDPOINT, { signal: controller.signal })
+        const data = await response.json()
+
+        if (!response.ok || !data?.success || !Array.isArray(data.programTypes)) {
+          throw new Error("Unable to load types")
+        }
+
+        const mappedTypes: CounselingProgramType[] = data.programTypes
+          .map((type: any) => ({
+            id: Number(type.id),
+            name: String(type.name ?? "").trim(),
+            color: String(type.color ?? "").trim(),
+          }))
+          .filter((type: CounselingProgramType) => Number.isInteger(type.id) && type.name)
+
+        setProgramTypes(mappedTypes)
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setProgramTypes([])
+        }
+      }
+    }
+
+    void fetchProgramTypes()
+
+    return () => controller.abort()
+  }, [])
 
   const handleChange = (field: keyof FormState, value: string) => {
     setFormState((prev) => ({
@@ -94,7 +130,7 @@ export default function NewOfferingPage() {
         location: formState.location.trim() || null,
         description: formState.description.trim() || null,
         link: formState.link.trim() || null,
-        type: formState.type.trim() || null,
+        program_type: formState.programTypeId ? Number(formState.programTypeId) : null,
         tags: formState.tags,
       }
 
@@ -204,16 +240,22 @@ export default function NewOfferingPage() {
           </div>
 
           <div className="grid gap-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="type">
+            <label className="text-sm font-medium text-foreground" htmlFor="programTypeId">
               Program type
             </label>
-            <input
-              id="type"
-              value={formState.type}
-              onChange={(event) => handleChange("type", event.target.value)}
+            <select
+              id="programTypeId"
+              value={formState.programTypeId}
+              onChange={(event) => handleChange("programTypeId", event.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm"
-              placeholder="Program type"
-            />
+            >
+              <option value="">Select a program type</option>
+              {programTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid gap-2">

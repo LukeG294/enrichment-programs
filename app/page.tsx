@@ -1,16 +1,18 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ArrowUp, Search, X } from "lucide-react"
 import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
 import type { CounselingProgram } from "@/lib/counseling-programs"
 import Image from "next/image"
-import { getAccessToken, getStoredUser } from "@/lib/auth"
+import { API_BASE_URL, getAccessToken, getStoredUser } from "@/lib/auth"
 import Link from "next/link"
+import type { CounselingProgramType } from "@/lib/counseling-program-types"
 
 const PROGRAMS_ENDPOINT = "https://api.ckpnt.com/counseling/programs"
 const FILTERS_ENDPOINT = "https://api.ckpnt.com/counseling/programs/filters"
+const PROGRAM_TYPES_ENDPOINT = `${API_BASE_URL}/counseling/program-types`
 const PAGE_SIZE = 6
 
 const normalizeTags = (tags: unknown): string[] => {
@@ -30,16 +32,16 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilters, setSelectedFilters] = useState({
     location: [] as string[],
-    type: [] as string[],
+    type: [] as number[],
     organization: [] as string[],
     tags: [] as string[],
   })
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery)
   const [debouncedFilters, setDebouncedFilters] = useState(selectedFilters)
   const [programs, setPrograms] = useState<CounselingProgram[]>([])
+  const [programTypes, setProgramTypes] = useState<CounselingProgramType[]>([])
   const [availableFilters, setAvailableFilters] = useState({
     locations: [] as string[],
-    programTypes: [] as string[],
     organizations: [] as string[],
     tags: [] as string[],
   })
@@ -58,6 +60,71 @@ export default function Home() {
     const user = getStoredUser()
     setCanEdit(Boolean(token && user))
   }, [])
+
+  const programTypesById = useMemo(() => {
+    return new Map(programTypes.map((type) => [type.id, type]))
+  }, [programTypes])
+
+  const programTypesByName = useMemo(() => {
+    return new Map(programTypes.map((type) => [type.name.toLowerCase(), type]))
+  }, [programTypes])
+
+  const resolveProgramTypeInfo = useCallback(
+    (program: any) => {
+      let typeId: number | null = null
+      let typeName: string | null = null
+      let typeColor: string | null = null
+
+      const rawType = program.program_type ?? program.programType ?? program.program_type_id ?? program.type ?? null
+
+      if (typeof rawType === "number") {
+        typeId = rawType
+      } else if (typeof rawType === "string") {
+        const trimmed = rawType.trim()
+        if (trimmed) {
+          const asNumber = Number(trimmed)
+          if (Number.isInteger(asNumber)) {
+            typeId = asNumber
+          } else {
+            typeName = trimmed
+          }
+        }
+      } else if (rawType && typeof rawType === "object") {
+        const possibleId = "id" in rawType ? Number((rawType as any).id) : null
+        if (Number.isInteger(possibleId)) {
+          typeId = possibleId
+        }
+        if ("name" in rawType && typeof (rawType as any).name === "string") {
+          typeName = String((rawType as any).name).trim()
+        }
+        if ("color" in rawType && typeof (rawType as any).color === "string") {
+          typeColor = String((rawType as any).color).trim()
+        }
+      }
+
+      if (typeId !== null) {
+        const match = programTypesById.get(typeId)
+        if (match) {
+          typeName = match.name
+          typeColor = match.color
+        }
+      } else if (typeName) {
+        const match = programTypesByName.get(typeName.toLowerCase())
+        if (match) {
+          typeId = match.id
+          typeName = match.name
+          typeColor = match.color
+        }
+      }
+
+      return {
+        programTypeId: typeId,
+        programTypeName: typeName,
+        programTypeColor: typeColor,
+      }
+    },
+    [programTypesById, programTypesByName]
+  )
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -102,7 +169,7 @@ export default function Home() {
       })
       
       debouncedFilters.type.forEach((type) => {
-        queryParams.append("type", type)
+        queryParams.append("program_type", String(type))
       })
       
       debouncedFilters.tags.forEach((tag) => {
@@ -132,7 +199,7 @@ export default function Home() {
         location: program.location ? String(program.location).trim() : null,
         description: program.description ? String(program.description).trim() : null,
         link: program.link ? String(program.link).trim() : null,
-        type: program.type ? String(program.type).trim() : null,
+        ...resolveProgramTypeInfo(program),
         tags: normalizeTags(program.tags),
       }))
 
@@ -151,7 +218,7 @@ export default function Home() {
       setIsLoading(false)
       setIsLoadingMore(false)
     }
-  }, [debouncedFilters, debouncedSearchQuery])
+  }, [debouncedFilters, debouncedSearchQuery, resolveProgramTypeInfo])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -192,7 +259,6 @@ export default function Home() {
 
         setAvailableFilters({
           locations: Array.isArray(data.filters.locations) ? data.filters.locations : [],
-          programTypes: Array.isArray(data.filters.programTypes) ? data.filters.programTypes : [],
           organizations: Array.isArray(data.filters.organizations) ? data.filters.organizations : [],
           tags: Array.isArray(data.filters.tags) ? data.filters.tags : [],
         })
@@ -200,7 +266,6 @@ export default function Home() {
         if ((error as Error).name !== "AbortError") {
           setAvailableFilters({
             locations: [],
-            programTypes: [],
             organizations: [],
             tags: [],
           })
@@ -211,6 +276,154 @@ export default function Home() {
     void fetchFilters()
 
     return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const fetchProgramTypes = async () => {
+      try {
+        const response = await fetch(PROGRAM_TYPES_ENDPOINT, { signal: controller.signal })
+
+        if (!response.ok) {
+          throw new Error("Request failed")
+        }
+
+        const data = await response.json()
+
+        if (!data?.success || !Array.isArray(data.programTypes)) {
+          throw new Error("Unexpected response")
+        }
+
+        const mappedTypes: CounselingProgramType[] = data.programTypes
+          .map((type: any) => ({
+            id: Number(type.id),
+            name: String(type.name ?? "").trim(),
+            color: String(type.color ?? "").trim(),
+          }))
+          .filter((type: CounselingProgramType) => Number.isInteger(type.id) && type.name)
+
+        setProgramTypes(mappedTypes)
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setProgramTypes([])
+        }
+      }
+    }
+
+    void fetchProgramTypes()
+
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    if (programTypes.length === 0) {
+      return
+    }
+    setPrograms((prevPrograms) =>
+      prevPrograms.map((program) => {
+        if (program.programTypeId !== null && (!program.programTypeName || !program.programTypeColor)) {
+          const match = programTypesById.get(program.programTypeId)
+          if (match) {
+            return {
+              ...program,
+              programTypeName: match.name,
+              programTypeColor: match.color,
+            }
+          }
+        }
+        return program
+      })
+    )
+  }, [programTypes, programTypesById])
+
+  const handleCreateType = useCallback(
+    async ({ name, color }: { name: string; color: string }) => {
+      const token = getAccessToken()
+      if (!token) {
+        throw new Error("Unauthorized")
+      }
+
+      const response = await fetch(PROGRAM_TYPES_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name, color }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data?.success || !data?.programType) {
+        throw new Error(data?.message || "Unable to create type")
+      }
+
+      const created: CounselingProgramType = {
+        id: Number(data.programType.id),
+        name: String(data.programType.name ?? "").trim(),
+        color: String(data.programType.color ?? "").trim(),
+      }
+
+      setProgramTypes((prev) => [...prev, created])
+    },
+    []
+  )
+
+  const handleUpdateType = useCallback(async (typeId: number, updates: { name: string; color: string }) => {
+    const token = getAccessToken()
+    if (!token) {
+      throw new Error("Unauthorized")
+    }
+
+    const response = await fetch(`${PROGRAM_TYPES_ENDPOINT}/${typeId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updates),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data?.success || !data?.programType) {
+      throw new Error(data?.message || "Unable to update type")
+    }
+
+    const updated: CounselingProgramType = {
+      id: Number(data.programType.id),
+      name: String(data.programType.name ?? "").trim(),
+      color: String(data.programType.color ?? "").trim(),
+    }
+
+    setProgramTypes((prev) => prev.map((type) => (type.id === typeId ? updated : type)))
+  }, [])
+
+  const handleDeleteType = useCallback(async (typeId: number) => {
+    const token = getAccessToken()
+    if (!token) {
+      throw new Error("Unauthorized")
+    }
+
+    const response = await fetch(`${PROGRAM_TYPES_ENDPOINT}/${typeId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data?.success) {
+      throw new Error(data?.message || "Unable to delete type")
+    }
+
+    setProgramTypes((prev) => prev.filter((type) => type.id !== typeId))
+    setSelectedFilters((prev: typeof selectedFilters) => ({
+      ...prev,
+      type: prev.type.filter((id) => id !== typeId),
+    }))
   }, [])
 
   useEffect(() => {
@@ -288,7 +501,11 @@ export default function Home() {
             <FilterPanel
               selectedFilters={selectedFilters}
               setSelectedFilters={setSelectedFilters}
-              filters={availableFilters}
+              filters={{ ...availableFilters, programTypes }}
+              canEdit={canEdit}
+              onCreateType={handleCreateType}
+              onUpdateType={handleUpdateType}
+              onDeleteType={handleDeleteType}
             />
           </aside>
 
@@ -333,7 +550,7 @@ export default function Home() {
                     }
                     className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary hover:bg-primary/20"
                   >
-                    {type}
+                    {programTypesById.get(type)?.name ?? `Type ${type}`}
                     <X className="h-3 w-3" />
                   </button>
                 ))}

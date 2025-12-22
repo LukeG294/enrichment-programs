@@ -9,15 +9,9 @@ interface ProgramCardProps {
 
 export default function ProgramCard({ program, canEdit = false }: ProgramCardProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
-  const typeColors: Record<string, string> = {
-    arts: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
-    business: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-    STEM: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-    internship: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-    humanities: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
-  }
-
-  const typeLabel = program.type?.trim() || "program"
+  const typeLabel = program.programTypeName?.trim() || "program"
+  const hasTypeColor = Boolean(program.programTypeColor)
+  const typeBadgeStyle = hasTypeColor ? { backgroundColor: program.programTypeColor, color: "#fff" } : undefined
   const description = program.description?.trim() ?? ""
   const maxDescriptionLength = 160
   const hasLongDescription = description.length > maxDescriptionLength
@@ -40,8 +34,9 @@ export default function ProgramCard({ program, canEdit = false }: ProgramCardPro
           </div>
           <span
             className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
-              program.type ? typeColors[program.type] ?? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground"
+              hasTypeColor ? "text-white" : "bg-muted text-muted-foreground"
             }`}
+            style={typeBadgeStyle}
           >
             {typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)}
           </span>
