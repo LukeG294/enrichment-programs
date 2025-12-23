@@ -24,7 +24,7 @@ const normalizeTags = (tags: unknown): string[] => {
 }
 
 const parseProgramTypeInfo = (program: any) => {
-  const rawType = program?.program_type ?? program?.programType ?? program?.program_type_id ?? null
+  const rawType = program?.program_type_id ?? program?.programType ?? program?.program_type_id ?? null
   if (rawType && typeof rawType === "object") {
     const id = Number((rawType as any).id)
     const name = typeof (rawType as any).name === "string" ? String((rawType as any).name).trim() : null
@@ -264,7 +264,7 @@ export default function EditOfferingPage() {
         location: formState.location.trim() || null,
         description: formState.description.trim() || null,
         link: formState.link.trim() || null,
-        program_type: formState.programTypeId ? Number(formState.programTypeId) : null,
+        program_type_id: formState.programTypeId ? Number(formState.programTypeId) : null,
         tags: formState.tags,
       }
 

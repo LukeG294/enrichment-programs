@@ -380,7 +380,7 @@ export default function FilterPanel({
       </div>
 
       {canEdit && onCreateType && (
-        <div className="space-y-3 rounded-md border border-dashed border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+        <div className="space-y-3 rounded-md border border-dashed border-border  p-3 text-sm text-muted-foreground">
           <button
             type="button"
             onClick={() => setIsManagingTypes((prev) => !prev)}
