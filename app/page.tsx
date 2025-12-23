@@ -240,6 +240,15 @@ export default function Home() {
     }
   }, [debouncedFilters, debouncedSearchQuery, resolveProgramTypeInfo])
 
+  const loadNextPage = useCallback(() => {
+    if (isLoading || isLoadingMore || !hasMore) return
+  
+    void fetchPrograms({
+      pageToLoad: page + 1,
+      append: true,
+    })
+  }, [fetchPrograms, hasMore, isLoading, isLoadingMore, page])
+  
   useEffect(() => {
     const controller = new AbortController()
 
@@ -454,9 +463,9 @@ export default function Home() {
     const observer = new IntersectionObserver(
       (entries) => {
         const firstEntry = entries[0]
-        if (firstEntry?.isIntersecting && !isLoadingMore && !isLoading && hasMore) {
-          void fetchPrograms({ pageToLoad: page + 1, append: true })
-        }
+        if (firstEntry?.isIntersecting) {
+          loadNextPage()
+        }        
       },
       { rootMargin: "120px" }
     )
@@ -655,13 +664,26 @@ export default function Home() {
                     <ProgramCard key={program.id} program={program} canEdit={canEdit} />
                   ))}
                 </div>
-                <div ref={loadMoreRef} className="mt-6 flex justify-center text-sm text-muted-foreground">
-                  {isLoadingMore
-                    ? "Loading more programs..."
-                    : hasMore
-                    ? "Scroll to load more programs."
-                    : "You’ve reached the end of the list."}
+                <div
+                  ref={loadMoreRef}
+                  className="mt-8 flex flex-col items-center gap-2 text-sm text-muted-foreground"
+                >
+                  {hasMore ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={loadNextPage}
+                        disabled={isLoadingMore}
+                        className="rounded-full border border-border px-4 py-2 font-medium text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isLoadingMore ? "Loading…" : "Load more programs"}
+                      </button>
+                    </>
+                  ) : (
+                    <span>You’ve reached the end of the list.</span>
+                  )}
                 </div>
+
               </>
             ) : showEmptyState ? (
               <div className="rounded-lg border border-border p-12 text-center">
