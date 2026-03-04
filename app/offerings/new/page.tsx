@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { API_BASE_URL, getAccessToken, getStoredUser } from "@/lib/auth"
+import { API_BASE_URL, clearSession, getAccessToken, getStoredUser } from "@/lib/auth"
 import type { CounselingProgramType } from "@/lib/counseling-program-types"
 
 const PROGRAMS_ENDPOINT = `${API_BASE_URL}/counseling/programs`
@@ -25,6 +25,11 @@ type FormErrors = Partial<Record<keyof FormState, string>>
 
 export default function NewOfferingPage() {
   const router = useRouter()
+
+  const redirectToLogin = useCallback(() => {
+    clearSession()
+    router.replace("/login")
+  }, [router])
   const [formState, setFormState] = useState<FormState>(emptyForm)
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -37,9 +42,9 @@ export default function NewOfferingPage() {
     const token = getAccessToken()
     const user = getStoredUser()
     if (!token || !user) {
-      router.replace("/login")
+      redirectToLogin()
     }
-  }, [router])
+  }, [redirectToLogin])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -110,7 +115,7 @@ export default function NewOfferingPage() {
     const user = getStoredUser()
 
     if (!token || !user) {
-      router.replace("/login")
+      redirectToLogin()
       return
     }
 
@@ -144,6 +149,11 @@ export default function NewOfferingPage() {
       })
 
       const data = await response.json()
+
+      if (response.status === 401 || response.status === 403) {
+        redirectToLogin()
+        return
+      }
 
       if (!response.ok || !data?.success || !data?.program) {
         throw new Error(data?.message || "Unable to create program")

@@ -6,8 +6,9 @@ import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
 import type { CounselingProgram } from "@/lib/counseling-programs"
 import Image from "next/image"
-import { API_BASE_URL, getAccessToken, getStoredUser } from "@/lib/auth"
+import { API_BASE_URL, clearSession, getAccessToken, getStoredUser } from "@/lib/auth"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import type { CounselingProgramType } from "@/lib/counseling-program-types"
 
 const PROGRAMS_ENDPOINT = "https://api.ckpnt.com/counseling/programs"
@@ -29,6 +30,7 @@ const normalizeTags = (tags: unknown): string[] => {
 }
 
 export default function Home() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilters, setSelectedFilters] = useState({
     location: [] as string[],
@@ -54,6 +56,11 @@ export default function Home() {
   const [showScrollTop, setShowScrollTop] = useState(false)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const [canEdit, setCanEdit] = useState(false)
+
+  const redirectToLogin = useCallback(() => {
+    clearSession()
+    router.replace("/login")
+  }, [router])
 
   useEffect(() => {
     const token = getAccessToken()
@@ -384,6 +391,11 @@ export default function Home() {
 
       const data = await response.json()
 
+      if (response.status === 401 || response.status === 403) {
+        redirectToLogin()
+        return
+      }
+
       if (!response.ok || !data?.success || !data?.programType) {
         throw new Error(data?.message || "Unable to create type")
       }
@@ -396,7 +408,7 @@ export default function Home() {
 
       setProgramTypes((prev) => [...prev, created])
     },
-    []
+    [redirectToLogin]
   )
 
   const handleUpdateType = useCallback(async (typeId: number, updates: { name: string; color: string }) => {
@@ -416,6 +428,11 @@ export default function Home() {
 
     const data = await response.json()
 
+    if (response.status === 401 || response.status === 403) {
+      redirectToLogin()
+      return
+    }
+
     if (!response.ok || !data?.success || !data?.programType) {
       throw new Error(data?.message || "Unable to update type")
     }
@@ -427,7 +444,7 @@ export default function Home() {
     }
 
     setProgramTypes((prev) => prev.map((type) => (type.id === typeId ? updated : type)))
-  }, [])
+  }, [redirectToLogin])
 
   const handleDeleteType = useCallback(async (typeId: number) => {
     const token = getAccessToken()
@@ -444,6 +461,11 @@ export default function Home() {
 
     const data = await response.json()
 
+    if (response.status === 401 || response.status === 403) {
+      redirectToLogin()
+      return
+    }
+
     if (!response.ok || !data?.success) {
       throw new Error(data?.message || "Unable to delete type")
     }
@@ -453,7 +475,7 @@ export default function Home() {
       ...prev,
       type: prev.type.filter((id) => id !== typeId),
     }))
-  }, [])
+  }, [redirectToLogin])
 
   useEffect(() => {
     if (!loadMoreRef.current || !hasMore) {
