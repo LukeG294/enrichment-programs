@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { API_BASE_URL, getAccessToken, getStoredUser } from "@/lib/auth"
+import { API_BASE_URL, clearSession, getAccessToken, getStoredUser } from "@/lib/auth"
 import type { CounselingProgram } from "@/lib/counseling-programs"
 import type { CounselingProgramType } from "@/lib/counseling-program-types"
 
@@ -65,6 +65,11 @@ type FormErrors = Partial<Record<keyof FormState, string>>
 
 export default function EditOfferingPage() {
   const router = useRouter()
+
+  const redirectToLogin = useCallback(() => {
+    clearSession()
+    router.replace("/login")
+  }, [router])
   const params = useParams()
   const offeringId = params?.id
 
@@ -90,9 +95,9 @@ export default function EditOfferingPage() {
     const token = getAccessToken()
     const user = getStoredUser()
     if (!token || !user) {
-      router.replace("/login")
+      redirectToLogin()
     }
-  }, [router])
+  }, [redirectToLogin])
 
   const hydrateForm = useCallback((program: CounselingProgram) => {
     const nextState: FormState = {
@@ -172,6 +177,11 @@ export default function EditOfferingPage() {
 
         const data = await response.json()
 
+        if (response.status === 401 || response.status === 403) {
+          redirectToLogin()
+          return
+        }
+
         if (!response.ok || !data?.success || !data?.program) {
           throw new Error(data?.message || "Unable to load program")
         }
@@ -240,7 +250,7 @@ export default function EditOfferingPage() {
     const user = getStoredUser()
 
     if (!token || !user) {
-      router.replace("/login")
+      redirectToLogin()
       return
     }
 
@@ -279,6 +289,11 @@ export default function EditOfferingPage() {
 
       const data = await response.json()
 
+      if (response.status === 401 || response.status === 403) {
+        redirectToLogin()
+        return
+      }
+
       if (!response.ok || !data?.success || !data?.program) {
         throw new Error(data?.message || "Unable to update offering")
       }
@@ -310,7 +325,7 @@ export default function EditOfferingPage() {
     const user = getStoredUser()
 
     if (!token || !user) {
-      router.replace("/login")
+      redirectToLogin()
       return
     }
 
@@ -337,6 +352,11 @@ export default function EditOfferingPage() {
       })
 
       const data = await response.json()
+
+      if (response.status === 401 || response.status === 403) {
+        redirectToLogin()
+        return
+      }
 
       if (!response.ok || !data?.success) {
         throw new Error(data?.message || "Unable to delete offering")

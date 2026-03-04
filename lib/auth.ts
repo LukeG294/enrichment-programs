@@ -31,6 +31,14 @@ const setCookie = (name: string, value: string, days = 7) => {
   document.cookie = `${name}=${encodeURIComponent(value)}; expires=${date.toUTCString()}; path=/; SameSite=Lax`
 }
 
+const clearCookie = (name: string) => {
+  if (typeof document === "undefined") {
+    return
+  }
+
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax`
+}
+
 export const storeSession = (token: string, user: AuthenticatedUser) => {
   if (typeof window === "undefined") {
     return
@@ -58,6 +66,15 @@ export const getStoredUser = (): AuthenticatedUser | null => {
 }
 
 export const getAccessToken = () => getCookie(ACCESS_TOKEN_COOKIE)
+
+export const clearSession = () => {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  clearCookie(ACCESS_TOKEN_COOKIE)
+  window.localStorage.removeItem(USER_STORAGE_KEY)
+}
 
 export class Auth {
   async login(email: string, password: string) {
