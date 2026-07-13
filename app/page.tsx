@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowUp, Search, X } from "lucide-react"
+import { ArrowUp, Clock, GraduationCap, Search, X } from "lucide-react"
 import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
 import type { CounselingProgram } from "@/lib/counseling-programs"
@@ -56,6 +56,7 @@ export default function Home() {
   const [showScrollTop, setShowScrollTop] = useState(false)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const [canEdit, setCanEdit] = useState(false)
+  const [showRecLetterComingSoon, setShowRecLetterComingSoon] = useState(false)
 
   const redirectToLogin = useCallback(() => {
     clearSession()
@@ -530,6 +531,28 @@ export default function Home() {
             <Image src="/ljcds.png" alt="La Jolla Country Day School logo" width={48} height={48} priority />
             <h1 className="text-3xl font-bold text-foreground">Summer Enrichment Opportunities</h1>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowRecLetterComingSoon(true)
+              window.setTimeout(() => setShowRecLetterComingSoon(false), 4000)
+            }}
+            className="mb-6 flex w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-left transition hover:bg-primary/15"
+          >
+            <GraduationCap className="h-5 w-5 shrink-0 text-primary" />
+            <span className="flex flex-wrap items-center gap-x-2">
+              <span className="font-semibold text-primary underline-offset-4 hover:underline">
+                Letter of Recommendation Policy
+              </span>
+            </span>
+            {showRecLetterComingSoon && (
+              <span className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary/80">
+                <Clock className="h-4 w-4" />
+                Adding this link shortly!
+              </span>
+            )}
+          </button>
 
           {/* Search Bar */}
           <div className="relative">
