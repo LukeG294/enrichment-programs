@@ -535,8 +535,7 @@ export default function Home() {
           <button
             type="button"
             onClick={() => {
-              setShowRecLetterComingSoon(true)
-              window.setTimeout(() => setShowRecLetterComingSoon(false), 4000)
+             window.open('https://docs.google.com/document/d/1VuRe9v97OJVgCZ6biSROmiFRgc9XbdIQ5U0T5KZLVk4/edit?tab=t.0#heading=h.2r84iwffua82')
             }}
             className="mb-6 flex w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-left transition hover:bg-primary/15"
           >
@@ -546,12 +545,6 @@ export default function Home() {
                 Letter of Recommendation Policy
               </span>
             </span>
-            {showRecLetterComingSoon && (
-              <span className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary/80">
-                <Clock className="h-4 w-4" />
-                Adding this link shortly!
-              </span>
-            )}
           </button>
 
           {/* Search Bar */}
