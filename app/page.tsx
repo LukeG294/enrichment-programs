@@ -1,138 +1,32 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowUp, Clock, GraduationCap, Search, X } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { ArrowUp, GraduationCap, Search, X } from "lucide-react"
 import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
 import type { CounselingProgram } from "@/lib/counseling-programs"
+import { loadPrograms } from "@/lib/programs"
+import { PROGRAM_CATEGORIES } from "@/lib/program-categories"
 import Image from "next/image"
-import { API_BASE_URL, clearSession, getAccessToken, getStoredUser } from "@/lib/auth"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import type { CounselingProgramType } from "@/lib/counseling-program-types"
 
-const PROGRAMS_ENDPOINT = "https://api.ckpnt.com/counseling/programs"
-const FILTERS_ENDPOINT = "https://api.ckpnt.com/counseling/programs/filters"
-const PROGRAM_TYPES_ENDPOINT = `${API_BASE_URL}/counseling/program-types`
 const PAGE_SIZE = 6
 
-const normalizeTags = (tags: unknown): string[] => {
-  if (Array.isArray(tags)) {
-    return tags.map((tag) => String(tag).trim()).filter(Boolean)
-  }
-  if (typeof tags === "string") {
-    return tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean)
-  }
-  return []
-}
-
 export default function Home() {
-  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilters, setSelectedFilters] = useState({
     location: [] as string[],
-    type: [] as number[],
+    category: [] as string[],
     organization: [] as string[],
     tags: [] as string[],
   })
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery)
   const [debouncedFilters, setDebouncedFilters] = useState(selectedFilters)
   const [programs, setPrograms] = useState<CounselingProgram[]>([])
-  const [programTypes, setProgramTypes] = useState<CounselingProgramType[]>([])
-  const [availableFilters, setAvailableFilters] = useState({
-    locations: [] as string[],
-    organizations: [] as string[],
-    tags: [] as string[],
-  })
   const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
-  const [totalPrograms, setTotalPrograms] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
-  const [canEdit, setCanEdit] = useState(false)
-  const [showRecLetterComingSoon, setShowRecLetterComingSoon] = useState(false)
-
-  const redirectToLogin = useCallback(() => {
-    clearSession()
-    router.replace("/login")
-  }, [router])
-
-  useEffect(() => {
-    const token = getAccessToken()
-    const user = getStoredUser()
-    setCanEdit(Boolean(token && user))
-  }, [])
-
-  const programTypesById = useMemo(() => {
-    return new Map(programTypes.map((type) => [type.id, type]))
-  }, [programTypes])
-
-  const programTypesByName = useMemo(() => {
-    return new Map(programTypes.map((type) => [type.name.toLowerCase(), type]))
-  }, [programTypes])
-
-  const resolveProgramTypeInfo = useCallback(
-    (program: any) => {
-      let typeId: number | null = null
-      let typeName: string | null = null
-      let typeColor: string | null = null
-
-      const rawType = program.program_type ?? program.programType ?? program.program_type_id ?? program.type ?? null
-
-      if (typeof rawType === "number") {
-        typeId = rawType
-      } else if (typeof rawType === "string") {
-        const trimmed = rawType.trim()
-        if (trimmed) {
-          const asNumber = Number(trimmed)
-          if (Number.isInteger(asNumber)) {
-            typeId = asNumber
-          } else {
-            typeName = trimmed
-          }
-        }
-      } else if (rawType && typeof rawType === "object") {
-        const possibleId = "id" in rawType ? Number((rawType as any).id) : null
-        if (Number.isInteger(possibleId)) {
-          typeId = possibleId
-        }
-        if ("name" in rawType && typeof (rawType as any).name === "string") {
-          typeName = String((rawType as any).name).trim()
-        }
-        if ("color" in rawType && typeof (rawType as any).color === "string") {
-          typeColor = String((rawType as any).color).trim()
-        }
-      }
-
-      if (typeId !== null) {
-        const match = programTypesById.get(typeId)
-        if (match) {
-          typeName = match.name
-          typeColor = match.color
-        }
-      } else if (typeName) {
-        const match = programTypesByName.get(typeName.toLowerCase())
-        if (match) {
-          typeId = match.id
-          typeName = match.name
-          typeColor = match.color
-        }
-      }
-
-      return {
-        programTypeId: typeId,
-        programTypeName: typeName,
-        programTypeColor: typeColor,
-      }
-    },
-    [programTypesById, programTypesByName]
-  )
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -143,128 +37,34 @@ export default function Home() {
     return () => clearTimeout(timeout)
   }, [searchQuery, selectedFilters])
 
-  const fetchPrograms = useCallback(async ({
-    pageToLoad,
-    append,
-    signal,
-  }: {
-    pageToLoad: number
-    append: boolean
-    signal?: AbortSignal
-  }) => {
-    if (pageToLoad === 1) {
-      setIsLoading(true)
-    } else {
-      setIsLoadingMore(true)
-    }
+  useEffect(() => {
+    let cancelled = false
+
+    setIsLoading(true)
     setErrorMessage(null)
 
-    try {
-      if (pageToLoad > 1) {
-        await new Promise((resolve) => setTimeout(resolve, 150))
-      }
-      const queryParams = new URLSearchParams({
-        page: String(pageToLoad),
-        limit: String(PAGE_SIZE),
-      })
-
-      if (debouncedSearchQuery.trim()) {
-        queryParams.set("search", debouncedSearchQuery.trim())
-      }
-
-      debouncedFilters.organization.forEach((org) => {
-        queryParams.append("organization", org)
-      })
-      
-      debouncedFilters.type.forEach((type) => {
-        queryParams.append("program_type", String(type))
-      })
-      
-      debouncedFilters.tags.forEach((tag) => {
-        queryParams.append("tags", tag)
-      })
-      
-      debouncedFilters.location.forEach((location) => {
-        queryParams.append("location", location)
-      })
-
-      const response = await fetch(`${PROGRAMS_ENDPOINT}?${queryParams.toString()}`, { signal })
-
-      if (!response.ok) {
-        throw new Error("Request failed")
-      }
-
-      const data = await response.json()
-
-      if (!data?.success || !Array.isArray(data.programs)) {
-        throw new Error("Unexpected response")
-      }
-
-      const mappedPrograms: CounselingProgram[] = data.programs.map((program: any) => ({
-        id: Number(program.id),
-        program: String(program.program ?? "").trim(),
-        organization: String(program.organization ?? "").trim(),
-        location: program.location ? String(program.location).trim() : null,
-        description: program.description ? String(program.description).trim() : null,
-        link: program.link ? String(program.link).trim() : null,
-        ...resolveProgramTypeInfo(program),
-        tags: normalizeTags(program.tags),
-      }))
-
-      setPrograms((prevPrograms) => (append ? [...prevPrograms, ...mappedPrograms] : mappedPrograms))
-      setPage(pageToLoad)
-      const totalCount = (() => {
-        if (typeof data.total === "number") {
-          return data.total
+    loadPrograms()
+      .then((data) => {
+        if (!cancelled) {
+          setPrograms(data)
         }
-        if (typeof data.total === "string") {
-          const parsed = Number(data.total)
-          if (Number.isFinite(parsed)) {
-            return parsed
-          }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setErrorMessage("We're making some changes right now, sorry for the inconvenience. Please try again soon.")
+          setPrograms([])
         }
-        if (typeof data.totalPrograms === "number") {
-          return data.totalPrograms
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false)
         }
-        if (typeof data.totalPrograms === "string") {
-          const parsed = Number(data.totalPrograms)
-          if (Number.isFinite(parsed)) {
-            return parsed
-          }
-        }
-        return mappedPrograms.length
-      })()
-      setTotalPrograms(totalCount)
-      setHasMore(pageToLoad * PAGE_SIZE < totalCount)
-    } catch (error) {
-      if ((error as Error).name !== "AbortError") {
-        setErrorMessage("We're making some changes right now, sorry for the inconvenience. Please try again soon.")
-        setPrograms([])
-        setTotalPrograms(0)
-      }
-    } finally {
-      setIsLoading(false)
-      setIsLoadingMore(false)
+      })
+
+    return () => {
+      cancelled = true
     }
-  }, [debouncedFilters, debouncedSearchQuery, resolveProgramTypeInfo])
-
-  const loadNextPage = useCallback(() => {
-    if (isLoading || isLoadingMore || !hasMore) return
-  
-    void fetchPrograms({
-      pageToLoad: page + 1,
-      append: true,
-    })
-  }, [fetchPrograms, hasMore, isLoading, isLoadingMore, page])
-  
-  useEffect(() => {
-    const controller = new AbortController()
-
-    setHasMore(true)
-    fetchPrograms({ pageToLoad: 1, append: false, signal: controller.signal })
-
-    return () => controller.abort()
-  }, [fetchPrograms])
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -277,206 +77,64 @@ export default function Home() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  useEffect(() => {
-    const controller = new AbortController()
+  const availableFilters = useMemo(() => {
+    const locations = new Set<string>()
+    const organizations = new Set<string>()
+    const tags = new Set<string>()
 
-    const fetchFilters = async () => {
-      try {
-        const response = await fetch(FILTERS_ENDPOINT, { signal: controller.signal })
-
-        if (!response.ok) {
-          throw new Error("Request failed")
-        }
-
-        const data = await response.json()
-
-        if (!data?.success || !data.filters) {
-          throw new Error("Unexpected response")
-        }
-
-        setAvailableFilters({
-          locations: Array.isArray(data.filters.locations) ? data.filters.locations : [],
-          organizations: Array.isArray(data.filters.organizations) ? data.filters.organizations : [],
-          tags: Array.isArray(data.filters.tags) ? data.filters.tags : [],
-        })
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          setAvailableFilters({
-            locations: [],
-            organizations: [],
-            tags: [],
-          })
-        }
-      }
-    }
-
-    void fetchFilters()
-
-    return () => controller.abort()
-  }, [])
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    const fetchProgramTypes = async () => {
-      try {
-        const response = await fetch(PROGRAM_TYPES_ENDPOINT, { signal: controller.signal })
-
-        if (!response.ok) {
-          throw new Error("Request failed")
-        }
-
-        const data = await response.json()
-
-        if (!data?.success || !Array.isArray(data.programTypes)) {
-          throw new Error("Unexpected response")
-        }
-
-        const mappedTypes: CounselingProgramType[] = data.programTypes
-          .map((type: any) => ({
-            id: Number(type.id),
-            name: String(type.name ?? "").trim(),
-            color: String(type.color ?? "").trim(),
-          }))
-          .filter((type: CounselingProgramType) => Number.isInteger(type.id) && type.name)
-
-        setProgramTypes(mappedTypes)
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          setProgramTypes([])
-        }
-      }
-    }
-
-    void fetchProgramTypes()
-
-    return () => controller.abort()
-  }, [])
-
-  useEffect(() => {
-    if (programTypes.length === 0) {
-      return
-    }
-    setPrograms((prevPrograms) =>
-      prevPrograms.map((program) => {
-        if (program.programTypeId !== null && (!program.programTypeName || !program.programTypeColor)) {
-          const match = programTypesById.get(program.programTypeId)
-          if (match) {
-            return {
-              ...program,
-              programTypeName: match.name,
-              programTypeColor: match.color,
-            }
-          }
-        }
-        return program
-      })
-    )
-  }, [programTypes, programTypesById])
-
-  const handleCreateType = useCallback(
-    async ({ name, color }: { name: string; color: string }) => {
-      const token = getAccessToken()
-      if (!token) {
-        throw new Error("Unauthorized")
-      }
-
-      const response = await fetch(PROGRAM_TYPES_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name, color }),
-      })
-
-      const data = await response.json()
-
-      if (response.status === 401 || response.status === 403) {
-        redirectToLogin()
-        return
-      }
-
-      if (!response.ok || !data?.success || !data?.programType) {
-        throw new Error(data?.message || "Unable to create type")
-      }
-
-      const created: CounselingProgramType = {
-        id: Number(data.programType.id),
-        name: String(data.programType.name ?? "").trim(),
-        color: String(data.programType.color ?? "").trim(),
-      }
-
-      setProgramTypes((prev) => [...prev, created])
-    },
-    [redirectToLogin]
-  )
-
-  const handleUpdateType = useCallback(async (typeId: number, updates: { name: string; color: string }) => {
-    const token = getAccessToken()
-    if (!token) {
-      throw new Error("Unauthorized")
-    }
-
-    const response = await fetch(`${PROGRAM_TYPES_ENDPOINT}/${typeId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(updates),
+    programs.forEach((program) => {
+      if (program.location) locations.add(program.location)
+      if (program.organization) organizations.add(program.organization)
+      program.tags.forEach((tag) => tags.add(tag))
     })
 
-    const data = await response.json()
-
-    if (response.status === 401 || response.status === 403) {
-      redirectToLogin()
-      return
+    return {
+      locations: Array.from(locations),
+      organizations: Array.from(organizations),
+      tags: Array.from(tags),
+      categories: [...PROGRAM_CATEGORIES],
     }
+  }, [programs])
 
-    if (!response.ok || !data?.success || !data?.programType) {
-      throw new Error(data?.message || "Unable to update type")
-    }
+  const filteredPrograms = useMemo(() => {
+    const query = debouncedSearchQuery.trim().toLowerCase()
 
-    const updated: CounselingProgramType = {
-      id: Number(data.programType.id),
-      name: String(data.programType.name ?? "").trim(),
-      color: String(data.programType.color ?? "").trim(),
-    }
+    return programs.filter((program) => {
+      if (query) {
+        const haystack = [program.program, program.organization, program.description ?? "", program.location ?? "", ...program.tags]
+          .join(" ")
+          .toLowerCase()
+        if (!haystack.includes(query)) {
+          return false
+        }
+      }
 
-    setProgramTypes((prev) => prev.map((type) => (type.id === typeId ? updated : type)))
-  }, [redirectToLogin])
+      if (debouncedFilters.location.length > 0 && (!program.location || !debouncedFilters.location.includes(program.location))) {
+        return false
+      }
 
-  const handleDeleteType = useCallback(async (typeId: number) => {
-    const token = getAccessToken()
-    if (!token) {
-      throw new Error("Unauthorized")
-    }
+      if (debouncedFilters.category.length > 0 && (!program.category || !debouncedFilters.category.includes(program.category))) {
+        return false
+      }
 
-    const response = await fetch(`${PROGRAM_TYPES_ENDPOINT}/${typeId}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      if (debouncedFilters.organization.length > 0 && !debouncedFilters.organization.includes(program.organization)) {
+        return false
+      }
+
+      if (debouncedFilters.tags.length > 0 && !debouncedFilters.tags.some((tag) => program.tags.includes(tag))) {
+        return false
+      }
+
+      return true
     })
+  }, [programs, debouncedSearchQuery, debouncedFilters])
 
-    const data = await response.json()
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [debouncedSearchQuery, debouncedFilters])
 
-    if (response.status === 401 || response.status === 403) {
-      redirectToLogin()
-      return
-    }
-
-    if (!response.ok || !data?.success) {
-      throw new Error(data?.message || "Unable to delete type")
-    }
-
-    setProgramTypes((prev) => prev.filter((type) => type.id !== typeId))
-    setSelectedFilters((prev: typeof selectedFilters) => ({
-      ...prev,
-      type: prev.type.filter((id) => id !== typeId),
-    }))
-  }, [redirectToLogin])
+  const visiblePrograms = filteredPrograms.slice(0, visibleCount)
+  const hasMore = visibleCount < filteredPrograms.length
 
   useEffect(() => {
     if (!loadMoreRef.current || !hasMore) {
@@ -487,8 +145,8 @@ export default function Home() {
       (entries) => {
         const firstEntry = entries[0]
         if (firstEntry?.isIntersecting) {
-          loadNextPage()
-        }        
+          setVisibleCount((prev) => prev + PAGE_SIZE)
+        }
       },
       { rootMargin: "120px" }
     )
@@ -496,13 +154,13 @@ export default function Home() {
     observer.observe(loadMoreRef.current)
 
     return () => observer.disconnect()
-  }, [fetchPrograms, hasMore, isLoading, isLoadingMore, page])
+  }, [hasMore])
 
   const clearFilters = () => {
     setSearchQuery("")
     setSelectedFilters({
       location: [],
-      type: [],
+      category: [],
       organization: [],
       tags: [],
     })
@@ -511,16 +169,15 @@ export default function Home() {
   const hasActiveFilters =
     searchQuery ||
     selectedFilters.location.length > 0 ||
-    selectedFilters.type.length > 0 ||
+    selectedFilters.category.length > 0 ||
     selectedFilters.organization.length > 0 ||
     selectedFilters.tags.length > 0
 
   const isInitialLoading = isLoading && programs.length === 0 && !errorMessage
-  const showEmptyState = !isLoading && !errorMessage && programs.length === 0
-  const isRefreshing = isLoading && programs.length > 0
+  const showEmptyState = !isLoading && !errorMessage && filteredPrograms.length === 0
   const resultsLabel = isInitialLoading
     ? "Loading programs..."
-    : `${totalPrograms} program${totalPrograms !== 1 ? "s" : ""} found`
+    : `${filteredPrograms.length} program${filteredPrograms.length !== 1 ? "s" : ""} found`
 
   return (
     <main className="min-h-screen bg-background">
@@ -568,13 +225,8 @@ export default function Home() {
             <FilterPanel
               selectedFilters={selectedFilters}
               setSelectedFilters={setSelectedFilters}
-              filters={{ ...availableFilters, programTypes }}
-              canEdit={canEdit}
-              onCreateType={handleCreateType}
-              onUpdateType={handleUpdateType}
-              onDeleteType={handleDeleteType}
+              filters={availableFilters}
             />
-            
           </aside>
 
           {/* Results */}
@@ -607,18 +259,18 @@ export default function Home() {
                     <X className="h-3 w-3" />
                   </button>
                 ))}
-                {selectedFilters.type.map((type) => (
+                {selectedFilters.category.map((category) => (
                   <button
-                    key={type}
+                    key={category}
                     onClick={() =>
                       setSelectedFilters({
                         ...selectedFilters,
-                        type: selectedFilters.type.filter((value) => value !== type),
+                        category: selectedFilters.category.filter((value) => value !== category),
                       })
                     }
                     className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary hover:bg-primary/20"
                   >
-                    {programTypesById.get(type)?.name ?? `Type ${type}`}
+                    {category}
                     <X className="h-3 w-3" />
                   </button>
                 ))}
@@ -661,25 +313,10 @@ export default function Home() {
             {/* Results Count */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <h2
-                  className={`text-lg font-semibold text-foreground transition-opacity duration-300 ${
-                    isRefreshing ? "opacity-60" : "opacity-100"
-                  }`}
-                >
+                <h2 className="text-lg font-semibold text-foreground">
                   <span>{resultsLabel}</span>
                 </h2>
-                {isRefreshing && (
-                  <span className="text-sm text-muted-foreground">Updating results...</span>
-                )}
               </div>
-              {canEdit && (
-                <Link
-                  href="/offerings/new"
-                  className="inline-flex items-center rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                >
-                  Add program
-                </Link>
-              )}
             </div>
 
             {/* Programs Grid */}
@@ -691,15 +328,11 @@ export default function Home() {
               <div className="rounded-lg border border-border p-12 text-center text-muted-foreground">
                 Fetching the latest opportunities...
               </div>
-            ) : programs.length > 0 ? (
+            ) : visiblePrograms.length > 0 ? (
               <>
-                <div
-                  className={`grid gap-4 transition-opacity duration-300 md:grid-cols-2 ${
-                    isRefreshing ? "opacity-60" : "opacity-100"
-                  }`}
-                >
-                  {programs.map((program) => (
-                    <ProgramCard key={program.id} program={program} canEdit={canEdit} />
+                <div className="grid gap-4 md:grid-cols-2">
+                  {visiblePrograms.map((program) => (
+                    <ProgramCard key={program.id} program={program} />
                   ))}
                 </div>
                 <div
@@ -707,21 +340,17 @@ export default function Home() {
                   className="mt-8 flex flex-col items-center gap-2 text-sm text-muted-foreground"
                 >
                   {hasMore ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={loadNextPage}
-                        disabled={isLoadingMore}
-                        className="rounded-full border border-border px-4 py-2 font-medium text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isLoadingMore ? "Loading…" : "Load more programs"}
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                      className="rounded-full border border-border px-4 py-2 font-medium text-foreground transition hover:bg-muted"
+                    >
+                      Load more programs
+                    </button>
                   ) : (
                     <span>You’ve reached the end of the list.</span>
                   )}
                 </div>
-
               </>
             ) : showEmptyState ? (
               <div className="rounded-lg border border-border p-12 text-center">

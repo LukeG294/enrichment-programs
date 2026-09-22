@@ -1,42 +1,38 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { ChevronDown, Pencil, Trash2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import type { CounselingProgramType } from "@/lib/counseling-program-types"
+import { getCategoryColor } from "@/lib/program-categories"
 
 interface FilterPanelProps {
   selectedFilters: {
     location: string[]
-    type: number[]
+    category: string[]
     organization: string[]
     tags: string[]
   }
   setSelectedFilters: (filters: any) => void
   filters: {
     locations: string[]
-    programTypes: CounselingProgramType[]
+    categories: string[]
     organizations: string[]
     tags: string[]
   }
-  canEdit?: boolean
-  onCreateType?: (payload: { name: string; color: string }) => Promise<void>
-  onUpdateType?: (typeId: number, updates: { name: string; color: string }) => Promise<void>
-  onDeleteType?: (typeId: number) => Promise<void>
 }
 
 const STORAGE_KEY = "enrichment-filter-expanded"
 
 type ExpandedSections = {
   location: boolean
-  type: boolean
+  category: boolean
   organization: boolean
   tags: boolean
 }
 
 const defaultExpandedSections: ExpandedSections = {
   location: true,
-  type: true,
+  category: true,
   organization: true,
   tags: true,
 }
@@ -48,29 +44,14 @@ const isExpandedSections = (value: unknown): value is ExpandedSections => {
   const record = value as Record<string, unknown>
   return (
     typeof record.location === "boolean" &&
-    typeof record.type === "boolean" &&
+    typeof record.category === "boolean" &&
     typeof record.organization === "boolean" &&
     typeof record.tags === "boolean"
   )
 }
 
-export default function FilterPanel({
-  selectedFilters,
-  setSelectedFilters,
-  filters,
-  canEdit = false,
-  onCreateType,
-  onUpdateType,
-  onDeleteType,
-}: FilterPanelProps) {
+export default function FilterPanel({ selectedFilters, setSelectedFilters, filters }: FilterPanelProps) {
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>(defaultExpandedSections)
-  const [isManagingTypes, setIsManagingTypes] = useState(false)
-  const [newTypeName, setNewTypeName] = useState("")
-  const [newTypeColor, setNewTypeColor] = useState("#3b82f6")
-  const [typeError, setTypeError] = useState<string | null>(null)
-  const [editingTypeId, setEditingTypeId] = useState<number | null>(null)
-  const [editingTypeName, setEditingTypeName] = useState("")
-  const [editingTypeColor, setEditingTypeColor] = useState("#3b82f6")
 
   const toCheckboxId = (prefix: string, value: string) =>
     `${prefix}-${value.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
@@ -115,7 +96,7 @@ export default function FilterPanel({
     if (!isDesktop) {
       setExpandedSections({
         location: false,
-        type: false,
+        category: false,
         organization: false,
         tags: false,
       })
@@ -123,89 +104,9 @@ export default function FilterPanel({
   }, [])
 
   const uniqueLocations = Array.from(new Set(filters.locations.filter(Boolean))).sort()
-  const uniqueTypes = useMemo(() => {
-    const seen = new Map<number, CounselingProgramType>()
-    filters.programTypes.forEach((type) => {
-      if (!seen.has(type.id)) {
-        seen.set(type.id, type)
-      }
-    })
-    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [filters.programTypes])
+  const uniqueCategories = Array.from(new Set(filters.categories.filter(Boolean))).sort()
   const uniqueOrganizations = Array.from(new Set(filters.organizations.filter(Boolean))).sort()
   const uniqueTags = Array.from(new Set(filters.tags.filter(Boolean))).sort()
-
-  const beginEditType = (type: CounselingProgramType) => {
-    setEditingTypeId(type.id)
-    setEditingTypeName(type.name)
-    setEditingTypeColor(type.color)
-    setTypeError(null)
-  }
-
-  const cancelEditType = () => {
-    setEditingTypeId(null)
-    setEditingTypeName("")
-    setEditingTypeColor("#3b82f6")
-  }
-
-  const handleCreateType = async () => {
-    if (!onCreateType) {
-      return
-    }
-    if (!newTypeName.trim()) {
-      setTypeError("Type name is required.")
-      return
-    }
-    if (!newTypeColor.trim()) {
-      setTypeError("Type color is required.")
-      return
-    }
-    setTypeError(null)
-    try {
-      await onCreateType({ name: newTypeName.trim(), color: newTypeColor.trim() })
-      setNewTypeName("")
-      setNewTypeColor("#3b82f6")
-    } catch (error) {
-      setTypeError(error instanceof Error ? error.message : "Unable to create type.")
-    }
-  }
-
-  const handleUpdateType = async () => {
-    if (!onUpdateType || editingTypeId === null) {
-      return
-    }
-    if (!editingTypeName.trim()) {
-      setTypeError("Type name is required.")
-      return
-    }
-    if (!editingTypeColor.trim()) {
-      setTypeError("Type color is required.")
-      return
-    }
-    setTypeError(null)
-    try {
-      await onUpdateType(editingTypeId, { name: editingTypeName.trim(), color: editingTypeColor.trim() })
-      cancelEditType()
-    } catch (error) {
-      setTypeError(error instanceof Error ? error.message : "Unable to update type.")
-    }
-  }
-
-  const handleDeleteType = async (typeId: number) => {
-    if (!onDeleteType) {
-      return
-    }
-    const confirmed = window.confirm("Delete this program type? This cannot be undone.")
-    if (!confirmed) {
-      return
-    }
-    setTypeError(null)
-    try {
-      await onDeleteType(typeId)
-    } catch (error) {
-      setTypeError(error instanceof Error ? error.message : "Unable to delete type.")
-    }
-  }
 
   return (
     <div className="space-y-4">
@@ -252,44 +153,45 @@ export default function FilterPanel({
           )}
         </div>
 
-        {/* Type Filter */}
+        {/* Category Filter */}
         <div className="space-y-3 border-b border-border pb-4">
           <button
-            onClick={() => toggleSection("type")}
+            onClick={() => toggleSection("category")}
             className="flex w-full items-center justify-between text-sm font-medium text-foreground hover:text-primary"
           >
             Program Type
-            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.type ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.category ? "rotate-180" : ""}`} />
           </button>
-          {expandedSections.type && (
+          {expandedSections.category && (
             <div className="space-y-2">
-              {uniqueTypes.map((type) => {
-                const checkboxId = toCheckboxId("type", type.name)
+              {uniqueCategories.map((category) => {
+                const checkboxId = toCheckboxId("category", category)
+                const color = getCategoryColor(category)
                 return (
-                  <label key={type.id} htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2">
+                  <label key={category} htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2">
                     <Checkbox
                       id={checkboxId}
-                      checked={selectedFilters.type.includes(type.id)}
+                      checked={selectedFilters.category.includes(category)}
                       onCheckedChange={(checked) => {
                         if (checked === true) {
                           setSelectedFilters({
                             ...selectedFilters,
-                            type: [...selectedFilters.type, type.id],
+                            category: [...selectedFilters.category, category],
                           })
                         } else {
                           setSelectedFilters({
                             ...selectedFilters,
-                            type: selectedFilters.type.filter((t) => t !== type.id),
+                            category: selectedFilters.category.filter((c) => c !== category),
                           })
                         }
                       }}
                     />
-                    <span className="inline-flex h-3 w-3 rounded-full" style={{ backgroundColor: type.color }} />
-                    <span className="text-sm text-muted-foreground">{type.name}</span>
+                    {color && <span className="inline-flex h-3 w-3 rounded-full" style={{ backgroundColor: color }} />}
+                    <span className="text-sm text-muted-foreground">{category}</span>
                   </label>
                 )
               })}
-              {uniqueTypes.length === 0 && (
+              {uniqueCategories.length === 0 && (
                 <p className="text-sm text-muted-foreground">No program types available.</p>
               )}
             </div>
@@ -378,113 +280,6 @@ export default function FilterPanel({
           )}
         </div>
       </div>
-
-      {canEdit && onCreateType && (
-        <div className="space-y-3 rounded-md border border-dashed border-border  p-3 text-sm text-muted-foreground">
-          <button
-            type="button"
-            onClick={() => setIsManagingTypes((prev) => !prev)}
-            className="flex w-full items-center justify-between font-medium text-foreground"
-          >
-            Manage program types
-            <ChevronDown className={`h-4 w-4 transition-transform ${isManagingTypes ? "rotate-180" : ""}`} />
-          </button>
-          {isManagingTypes && (
-            <div className="space-y-3">
-              {typeError ? <p className="text-xs text-destructive">{typeError}</p> : null}
-              <div className="grid gap-2">
-                <label className="text-xs font-medium text-foreground" htmlFor="new-type-name">
-                  Add new type
-                </label>
-                <input
-                  id="new-type-name"
-                  value={newTypeName}
-                  onChange={(event) => setNewTypeName(event.target.value)}
-                  className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
-                  placeholder="Type name"
-                />
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={newTypeColor}
-                    onChange={(event) => setNewTypeColor(event.target.value)}
-                    className="h-8 w-10 rounded border border-border bg-background p-0"
-                    aria-label="Pick a type color"
-                  />
-                  <span className="text-xs">{newTypeColor}</span>
-                  <button
-                    type="button"
-                    onClick={() => void handleCreateType()}
-                    className="ml-auto rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {uniqueTypes.map((type) => (
-                  <div key={type.id} className="rounded-md border border-border bg-background p-2">
-                    {editingTypeId === type.id ? (
-                      <div className="space-y-2">
-                        <input
-                          value={editingTypeName}
-                          onChange={(event) => setEditingTypeName(event.target.value)}
-                          className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
-                        />
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={editingTypeColor}
-                            onChange={(event) => setEditingTypeColor(event.target.value)}
-                            className="h-8 w-10 rounded border border-border bg-background p-0"
-                            aria-label="Edit type color"
-                          />
-                          <span className="text-xs">{editingTypeColor}</span>
-                          <button
-                            type="button"
-                            onClick={() => void handleUpdateType()}
-                            className="ml-auto rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted"
-                          >
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelEditType}
-                            className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex h-3 w-3 rounded-full" style={{ backgroundColor: type.color }} />
-                        <span className="text-xs text-foreground">{type.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => beginEditType(type)}
-                          className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-foreground hover:bg-muted"
-                          aria-label={`Edit ${type.name}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteType(type.id)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-destructive/40 text-destructive hover:bg-destructive/10"
-                          aria-label={`Delete ${type.name}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

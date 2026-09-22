@@ -1,18 +1,18 @@
 import { useState } from "react"
 import { Building2, ExternalLink, MapPin, Tag } from "lucide-react"
 import type { CounselingProgram } from "@/lib/counseling-programs"
+import { getCategoryColor } from "@/lib/program-categories"
 
 interface ProgramCardProps {
   program: CounselingProgram
-  canEdit?: boolean
 }
 
-export default function ProgramCard({ program, canEdit = false }: ProgramCardProps) {
+export default function ProgramCard({ program }: ProgramCardProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
-  const typeLabel = program.programTypeName?.trim() || "program"
-  const programTypeColor = program.programTypeColor ?? undefined
-  const hasTypeColor = Boolean(programTypeColor)
-  const typeBadgeStyle = hasTypeColor ? { backgroundColor: programTypeColor, color: "#fff" } : undefined
+  const typeLabel = program.category?.trim() || "program"
+  const categoryColor = getCategoryColor(program.category)
+  const hasTypeColor = Boolean(categoryColor)
+  const typeBadgeStyle = hasTypeColor ? { backgroundColor: categoryColor, color: "#fff" } : undefined
   const description = program.description?.trim() ?? ""
   const maxDescriptionLength = 160
   const hasLongDescription = description.length > maxDescriptionLength
@@ -86,27 +86,17 @@ export default function ProgramCard({ program, canEdit = false }: ProgramCardPro
           </div>
         )}
 
-        {(program.link || canEdit) && (
+        {program.link && (
           <div className="flex flex-wrap items-center gap-3">
-            {program.link && (
-              <a
-                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-                href={program.link}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Learn more
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            )}
-            {canEdit && (
-              <a
-                className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground transition hover:bg-muted"
-                href={`/offerings/${program.id}/edit`}
-              >
-                Edit offering
-              </a>
-            )}
+            <a
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+              href={program.link}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+              <ExternalLink className="h-4 w-4" />
+            </a>
           </div>
         )}
       </div>
