@@ -238,7 +238,7 @@ export default function Home() {
       setHasMore(pageToLoad * PAGE_SIZE < totalCount)
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
-        setErrorMessage("We couldn’t load programs right now. Please try again later.")
+        setErrorMessage("We're making some changes right now, sorry for the inconvenience. Please try again soon.")
         setPrograms([])
         setTotalPrograms(0)
       }
