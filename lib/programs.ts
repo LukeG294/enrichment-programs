@@ -1,11 +1,11 @@
 import Papa from "papaparse"
 import type { CounselingProgram } from "@/lib/counseling-programs"
 
-// The Google Sheet (loaded from the CheckPoint Student Postgres backup) is
-// now the single source of truth for program data. Editing happens in the
-// Sheet directly, not in this app — see README.md.
-const SHEET_ID = "1yJWdjWMs1Yv_Zf6kwxtfAlmi3n8ymW6Hujjvz69g470"
-const TAB_NAME = "Sheet1"
+// The Google Sheet is the single source of truth for program data. Editing
+// happens in the Sheet directly, not in this app — see README.md. Override
+// these for your own instance via NEXT_PUBLIC_SHEET_ID / NEXT_PUBLIC_SHEET_TAB.
+const SHEET_ID = process.env.NEXT_PUBLIC_SHEET_ID || "1yJWdjWMs1Yv_Zf6kwxtfAlmi3n8ymW6Hujjvz69g470"
+const TAB_NAME = process.env.NEXT_PUBLIC_SHEET_TAB || "Sheet1"
 
 const normalizeTags = (tags: unknown): string[] => {
   if (Array.isArray(tags)) {

@@ -11,6 +11,25 @@ import Image from "next/image"
 
 const PAGE_SIZE = 6
 
+// An env var explicitly set to "" (e.g. in .env.local) means "turn this off"
+// and must be told apart from one that's simply unset, so these compare
+// against undefined rather than using `||`.
+const SITE_HEADING = process.env.NEXT_PUBLIC_SITE_HEADING || "Summer Enrichment Opportunities"
+const LOGO_PATH =
+  process.env.NEXT_PUBLIC_LOGO_PATH !== undefined ? process.env.NEXT_PUBLIC_LOGO_PATH : "/ljcds.png"
+const LOGO_ALT =
+  process.env.NEXT_PUBLIC_LOGO_ALT !== undefined
+    ? process.env.NEXT_PUBLIC_LOGO_ALT
+    : "La Jolla Country Day School logo"
+const RESOURCE_LINK_LABEL =
+  process.env.NEXT_PUBLIC_RESOURCE_LINK_LABEL !== undefined
+    ? process.env.NEXT_PUBLIC_RESOURCE_LINK_LABEL
+    : "Letter of Recommendation Policy"
+const RESOURCE_LINK_URL =
+  process.env.NEXT_PUBLIC_RESOURCE_LINK_URL !== undefined
+    ? process.env.NEXT_PUBLIC_RESOURCE_LINK_URL
+    : "https://docs.google.com/document/d/1VuRe9v97OJVgCZ6biSROmiFRgc9XbdIQ5U0T5KZLVk4/edit?tab=t.0#heading=h.2r84iwffua82"
+
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilters, setSelectedFilters] = useState({
@@ -185,24 +204,26 @@ export default function Home() {
       <div className="border-b border-border ">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6 flex items-center gap-3">
-            <Image src="/ljcds.png" alt="La Jolla Country Day School logo" width={48} height={48} priority />
-            <h1 className="text-3xl font-bold text-foreground">Summer Enrichment Opportunities</h1>
+            {LOGO_PATH && <Image src={LOGO_PATH} alt={LOGO_ALT} width={48} height={48} priority />}
+            <h1 className="text-3xl font-bold text-foreground">{SITE_HEADING}</h1>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-             window.open('https://docs.google.com/document/d/1VuRe9v97OJVgCZ6biSROmiFRgc9XbdIQ5U0T5KZLVk4/edit?tab=t.0#heading=h.2r84iwffua82')
-            }}
-            className="mb-6 flex w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-left transition hover:bg-primary/15"
-          >
-            <GraduationCap className="h-5 w-5 shrink-0 text-primary" />
-            <span className="flex flex-wrap items-center gap-x-2">
-              <span className="font-semibold text-primary underline-offset-4 hover:underline">
-                Letter of Recommendation Policy
+          {RESOURCE_LINK_URL && (
+            <button
+              type="button"
+              onClick={() => {
+                window.open(RESOURCE_LINK_URL)
+              }}
+              className="mb-6 flex w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-left transition hover:bg-primary/15"
+            >
+              <GraduationCap className="h-5 w-5 shrink-0 text-primary" />
+              <span className="flex flex-wrap items-center gap-x-2">
+                <span className="font-semibold text-primary underline-offset-4 hover:underline">
+                  {RESOURCE_LINK_LABEL}
+                </span>
               </span>
-            </span>
-          </button>
+            </button>
+          )}
 
           {/* Search Bar */}
           <div className="relative">
