@@ -4,8 +4,6 @@ A searchable, filterable directory of enrichment programs (internships, camps, v
 research, etc.), built with Next.js. There's no database and no admin UI — the program data
 lives entirely in a Google Sheet, so editing it is as simple as editing a spreadsheet.
 
-![Screenshot of the program directory, showing a search bar, category filters, and program cards](docs/screenshot.jpg)
-
 *(Live example: [programs.ckpnt.com](https://programs.ckpnt.com) — one school's instance, running this same code.)*
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FLukeG294%2Fenrichment-programs&env=NEXT_PUBLIC_SHEET_ID,NEXT_PUBLIC_SHEET_TAB,NEXT_PUBLIC_SITE_TITLE,NEXT_PUBLIC_SITE_HEADING&envDescription=Your%20Google%20Sheet%20ID%20and%20branding.%20Copy%20the%20template%20Sheet%20first%20(see%20Quick%20start%20below).&envLink=https%3A%2F%2Fgithub.com%2FLukeG294%2Fenrichment-programs%23quick-start-run-your-own-instance&project-name=enrichment-programs&repository-name=enrichment-programs)
