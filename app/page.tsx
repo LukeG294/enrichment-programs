@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { ArrowUp, GraduationCap, Search, X } from "lucide-react"
 import ProgramCard from "@/components/program-card"
 import FilterPanel from "@/components/filter-panel"
@@ -8,6 +8,7 @@ import type { CounselingProgram } from "@/lib/counseling-programs"
 import { loadPrograms } from "@/lib/programs"
 import { PROGRAM_CATEGORIES } from "@/lib/program-categories"
 import Image from "next/image"
+import { usePathname, useRouter, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation"
 
 const PAGE_SIZE = 6
 
@@ -30,14 +31,60 @@ const RESOURCE_LINK_URL =
     ? process.env.NEXT_PUBLIC_RESOURCE_LINK_URL
     : "https://docs.google.com/document/d/1VuRe9v97OJVgCZ6biSROmiFRgc9XbdIQ5U0T5KZLVk4/edit?tab=t.0#heading=h.2r84iwffua82"
 
-export default function Home() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFilters, setSelectedFilters] = useState({
-    location: [] as string[],
-    category: [] as string[],
-    organization: [] as string[],
-    tags: [] as string[],
-  })
+type Filters = {
+  location: string[]
+  category: string[]
+  organization: string[]
+  tags: string[]
+}
+
+const FILTER_KEYS: (keyof Filters)[] = [
+  "location",
+  "category",
+  "organization",
+  "tags",
+]
+
+// The search and filter state is shared through the URL, so a filtered view
+// can be linked: `?q=robotics&category=STEM,Arts`. Filter values are
+// comma-separated, matching the format in the issue.
+function filtersFromSearchParams(params: ReadonlyURLSearchParams): Filters {
+  const filters: Filters = {
+    location: [],
+    category: [],
+    organization: [],
+    tags: [],
+  }
+  for (const key of FILTER_KEYS) {
+    const value = params.get(key)
+    filters[key] = value ? value.split(",").filter(Boolean) : []
+  }
+  return filters
+}
+
+function buildSearchParams(query: string, filters: Filters): URLSearchParams {
+  const params = new URLSearchParams()
+  if (query) {
+    params.set("q", query)
+  }
+  for (const key of FILTER_KEYS) {
+    if (filters[key].length > 0) {
+      params.set(key, filters[key].join(","))
+    }
+  }
+  return params
+}
+
+function HomeContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname() ?? "/"
+  const [searchQuery, setSearchQuery] = useState(
+    () => searchParams.get("q") ?? ""
+  )
+  const [selectedFilters, setSelectedFilters] = useState<Filters>(() =>
+    filtersFromSearchParams(searchParams)
+  )
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery)
   const [debouncedFilters, setDebouncedFilters] = useState(selectedFilters)
   const [programs, setPrograms] = useState<CounselingProgram[]>([])
@@ -55,6 +102,43 @@ export default function Home() {
 
     return () => clearTimeout(timeout)
   }, [searchQuery, selectedFilters])
+
+  // Back/forward navigation changes the URL, so the state follows it.
+  // This runs before the effect below and marks the navigation, so the
+  // debounced values catching up cannot overwrite it.
+  const justNavigatedRef = useRef(false)
+
+  useEffect(() => {
+    const nextQuery = searchParams.get("q") ?? ""
+    const nextFilters = filtersFromSearchParams(searchParams)
+    let changed = false
+    if (nextQuery !== searchQuery) {
+      setSearchQuery(nextQuery)
+      changed = true
+    }
+    if (JSON.stringify(nextFilters) !== JSON.stringify(selectedFilters)) {
+      setSelectedFilters(nextFilters)
+      changed = true
+    }
+    if (changed) {
+      justNavigatedRef.current = true
+    }
+  }, [searchParams, searchQuery, selectedFilters])
+
+  // Write the debounced search state to the URL without adding a history
+  // entry or scrolling. Skipped when the URL already matches.
+  useEffect(() => {
+    const params = buildSearchParams(debouncedSearchQuery, debouncedFilters)
+    if (params.toString() === searchParams.toString()) {
+      justNavigatedRef.current = false
+      return
+    }
+    if (justNavigatedRef.current) {
+      return
+    }
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [debouncedSearchQuery, debouncedFilters, pathname, router, searchParams])
 
   useEffect(() => {
     let cancelled = false
@@ -393,5 +477,13 @@ export default function Home() {
         <ArrowUp className="h-4 w-4" />
       </button>
     </main>
+  )
+}
+
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   )
 }
